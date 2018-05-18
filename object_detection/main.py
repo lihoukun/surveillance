@@ -43,6 +43,7 @@ def prepare_model():
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
+    return detection_graph
 
 
 def load_image_into_numpy_array(image):
@@ -74,7 +75,7 @@ def run_inference_for_single_image(image, graph):
                 output_dict['detection_masks'] = output_dict['detection_masks'][0]
     return output_dict
 
-def detect_image(image):
+def detect_image(image, detection_graph):
     if not os.path.isfile(image):
         print('image not exist at {}'.format(image))
         return
@@ -92,17 +93,17 @@ def detect_image(image):
         output_dict['detection_boxes'],
         output_dict['detection_classes'],
         output_dict['detection_scores'],
-        line_thickness=8,
         category_index,
+	instance_masks=None,
         use_normalized_coordinates=True,
         line_thickness=8)
     return image_np
 
 def main():
-    prepare_model()
+    detection_graph = prepare_model()
     args = parse_args()
     if args.image:
-        image_np = detect_image(args.image)
+        image_np = detect_image(args.image, detection_graph)
         image = Image.fromarray(image_np)
         image.save('1.jpeg')
     elif args.image_path:
