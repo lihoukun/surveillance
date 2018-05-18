@@ -92,4 +92,4 @@ ENV/
 .idea/
 
 # large files
-objection_detection/data/frozon_*.pb
+objection_detection/data/frozen_*.pb
