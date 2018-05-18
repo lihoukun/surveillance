@@ -14,21 +14,23 @@ from utils import visualization_utils as vis_util
 # What model to download.
 MODEL_NAME = 'faster_rcnn_resnet101_kitti_2018_01_28'
 MODEL_FILE = MODEL_NAME + '.tar.gz'
-DOWNLOAD_BASE = 'http://download.tenorflow.org/models/object_detection/'
+DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
 
-PATH_TO_CKPT = os.path.join('data', '/frozen_nference_graph.pb')
-PATH_TO_LABELS = os.path.join('data', 'pascal_label_map.pbtxt')
+PATH_TO_CKPT = os.path.join(MODEL_NAME, 'frozen_inference_graph.pb')
+PATH_TO_LABELS = os.path.join(MODEL_NAME, 'kitti_label_map.pbtxt')
 NUM_CLASSES = 2
 
 if not os.path.isfile(PATH_TO_CKPT):
     opener = urllib.request.URLopener()
+    print(DOWNLOAD_BASE + MODEL_FILE)
     opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
     tar_file = tarfile.open(MODEL_FILE)
     for file in tar_file.getmembers():
         file_name = os.path.basename(file.name)
         if 'frozen_inference_graph.pb' in file_name:
-            tar_file.extract(file, 'data/')
+            tar_file.extract(file, './')
 
+exit(0)
 detection_graph = tf.Graph()
 with detection_graph.as_default():
   od_graph_def = tf.GraphDef()

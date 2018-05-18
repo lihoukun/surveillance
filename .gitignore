@@ -92,4 +92,5 @@ ENV/
 .idea/
 
 # large files
-objection_detection/data/frozen_*.pb
+*.pb
+*.tar.gz
