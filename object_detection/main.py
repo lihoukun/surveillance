@@ -25,9 +25,9 @@ if not os.path.isfile(PATH_TO_CKPT):
     opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
     tar_file = tarfile.open(MODEL_FILE)
     for file in tar_file.getmembers():
-    file_name = os.path.basename(file.name)
-    if 'frozen_inference_graph.pb' in file_name:
-        tar_file.extract(file, 'data/')
+        file_name = os.path.basename(file.name)
+        if 'frozen_inference_graph.pb' in file_name:
+            tar_file.extract(file, 'data/')
 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
