@@ -22,7 +22,6 @@ NUM_CLASSES = 2
 
 if not os.path.isfile(PATH_TO_CKPT):
     opener = urllib.request.URLopener()
-    print(DOWNLOAD_BASE + MODEL_FILE)
     opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
     tar_file = tarfile.open(MODEL_FILE)
     for file in tar_file.getmembers():
@@ -30,7 +29,6 @@ if not os.path.isfile(PATH_TO_CKPT):
         if 'frozen_inference_graph.pb' in file_name:
             tar_file.extract(file, './')
 
-exit(0)
 detection_graph = tf.Graph()
 with detection_graph.as_default():
   od_graph_def = tf.GraphDef()
@@ -40,7 +38,7 @@ with detection_graph.as_default():
     tf.import_graph_def(od_graph_def, name='')
 
 
-label_maplabel_m  = label_map_util.load_labelmap(PATH_TO_LABELS)
+label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
 
@@ -60,7 +58,7 @@ TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(
 IMAGE_SIZE = (12, 8)
 
 
-def run_inference_for_single_imagerun_inf(image, graph):
+def run_inference_for_single_image(image, graph):
   with graph.as_default():
     with tf.Session() as sess:
       # Get handles to input and output tensors
@@ -125,5 +123,3 @@ for image_path in TEST_IMAGE_PATHS:
       instance_masks=output_dict.get('detection_masks'),
       use_normalized_coordinates=True,
       line_thickness=8)
-  plt.figure(figsize=IMAGE_SIZE)
-  plt.imshow(image_np)
