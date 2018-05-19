@@ -4,6 +4,7 @@ import six.moves.urllib as urllib
 import tarfile
 import tensorflow as tf
 import argparse
+import datetime
 
 from PIL import Image
 
@@ -99,15 +100,30 @@ def detect_image(image, detection_graph):
         line_thickness=8)
     return image_np
 
+def detect_images(image_path, detection_graph):
+    if not os.path.isdir(image_path):
+	print('image path not exist at {}'.format(image_path))
+    print(datetime.datetime.now())
+    count = 0
+    for image_name in os.listdir(image_path):
+        count += 1 
+        try:
+            image_np = detect_image(os.path.join(image_path,image_name), detection_graph)
+            image = Image.fromarray(image_np)
+            image.save('output/new_{}.jpeg'.format(image_name.split('.')[0]))
+        except:
+	    pass
+    print(datetime.datetime.now())
+    
 def main():
     detection_graph = prepare_model()
     args = parse_args()
     if args.image:
         image_np = detect_image(args.image, detection_graph)
         image = Image.fromarray(image_np)
-        image.save('1.jpeg')
+        image.save('output.jpeg')
     elif args.image_path:
-        pass
+	detect_images(args.image_path, detection_graph)
 
 
 if __name__ == '__main__':
