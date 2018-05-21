@@ -95,26 +95,52 @@ def detect_image(image, detection_graph):
         output_dict['detection_classes'],
         output_dict['detection_scores'],
         category_index,
-	instance_masks=None,
+        instance_masks=None,
         use_normalized_coordinates=True,
         line_thickness=8)
     return image_np
 
-def detect_images(image_path, detection_graph):
+def detect_images(image_path, graph):
     if not os.path.isdir(image_path):
-	print('image path not exist at {}'.format(image_path))
+        print('image path not exist at {}'.format(image_path))
     print(datetime.datetime.now())
     count = 0
-    for image_name in os.listdir(image_path):
-        count += 1 
-        try:
-            image_np = detect_image(os.path.join(image_path,image_name), detection_graph)
-            image = Image.fromarray(image_np)
-            image.save('output/new_{}.jpeg'.format(image_name.split('.')[0]))
-        except:
-	    pass
-    print(datetime.datetime.now())
-    
+    label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
+    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
+    category_index = label_map_util.create_category_index(categories)
+
+    with graph.as_default():
+        sess = with tf.Session()
+        image_tensor = graph.get_tensor_by_name('image_tensor:0')
+        detection_boxes = graph.get_tensor_by_name('detection_boxes:0')
+        detection_scores = graph.get_tensor_by_name('detection_scores:0')
+        detection_classes = graph.get_tensor_by_name('detection_classes:0')
+        num_detections = graph.get_tensor_by_name('num_detections:0')
+
+
+        for image_name in os.listdir(image_path):
+            try:
+                image = Image.open(image_name)
+                image_np = load_image_into_numpy_array(image)
+                (boxes, scores, classes, num) = sess.run(
+                    [detection_boxes, detection_scores, detection_classes, num_detections],
+                    feed_dict={image_tensor: np.expand_dims(image, 0)}
+                )
+
+                vis_util.visualize_boxes_and_labels_on_image_array(
+                    image_np,
+                    np.squeeze(boxes),
+                    np.squeeze(classes).astype(np.int32),
+                    np.squeeze(scores),
+                    category_index,
+                    use_normalized_coordinates = True,
+                    line_thickness = 8
+                )
+
+                count += 1
+            except:
+                continue
+
 def main():
     detection_graph = prepare_model()
     args = parse_args()
@@ -123,7 +149,7 @@ def main():
         image = Image.fromarray(image_np)
         image.save('output.jpeg')
     elif args.image_path:
-	detect_images(args.image_path, detection_graph)
+        detect_images(args.image_path, detection_graph)
 
 
 if __name__ == '__main__':
