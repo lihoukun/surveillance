@@ -69,23 +69,30 @@ def detect_images(images, graph):
     category_index = label_map_util.create_category_index(categories)
 
     with graph.as_default():
-        sess = with tf.Session()
+        sess = tf.Session(graph=graph)
         image_tensor = graph.get_tensor_by_name('image_tensor:0')
         detection_boxes = graph.get_tensor_by_name('detection_boxes:0')
         detection_scores = graph.get_tensor_by_name('detection_scores:0')
         detection_classes = graph.get_tensor_by_name('detection_classes:0')
         num_detections = graph.get_tensor_by_name('num_detections:0')
 
+        try:
+            os.path.isdir('output')
+        except:
+            os.makedirs('output')
+
         start = datetime.datetime.now()
         for image_name in images:
             try:
                 image = Image.open(image_name)
                 image_np = load_image_into_numpy_array(image)
+                print('a')
                 (boxes, scores, classes, num) = sess.run(
                     [detection_boxes, detection_scores, detection_classes, num_detections],
                     feed_dict={image_tensor: np.expand_dims(image, 0)}
                 )
 
+                print('b')
                 vis_util.visualize_boxes_and_labels_on_image_array(
                     image_np,
                     np.squeeze(boxes),
@@ -96,11 +103,13 @@ def detect_images(images, graph):
                     line_thickness = 8
                 )
 
+                print('c')
                 image = Image.fromarray(image_np)
                 image.save('output/new_{}'.format(os.path.basename(image_name)))
+                print('d')
                 count += 1
             except:
-                print('fail to handle image {}'.format(image))
+                print('fail to handle image {}'.format(image_name))
                 continue
         end = datetime.datetime.now()
         print('total time: {}'.format(end-start))
