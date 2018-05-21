@@ -9,7 +9,7 @@ import datetime
 from PIL import Image
 
 import label_map_util
-from utils import visualization_utils as vis_util
+import visualization_utils as vis_util
 
 # What model to download.
 MODEL_NAME = 'faster_rcnn_resnet101_kitti_2018_01_28'
@@ -95,8 +95,7 @@ def detect_images(images, graph):
                     np.squeeze(classes).astype(np.int32),
                     np.squeeze(scores),
                     category_index,
-                    use_normalized_coordinates = True,
-                    line_thickness = 8
+                    use_normalized_coordinates = True
                 )
 
                 image = Image.fromarray(image_np)
