@@ -5,11 +5,11 @@ import tarfile
 import tensorflow as tf
 import argparse
 import datetime
+import json
 
 from PIL import Image
 
-import label_map_util
-import visualization_utils as vis_util
+import image_util
 
 # What model to download.
 MODEL_NAME = 'faster_rcnn_resnet101_kitti_2018_01_28'
@@ -17,7 +17,7 @@ MODEL_FILE = MODEL_NAME + '.tar.gz'
 DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
 
 PATH_TO_CKPT = os.path.join(MODEL_NAME, 'frozen_inference_graph.pb')
-PATH_TO_LABELS = os.path.join(MODEL_NAME, 'kitti_label_map.pbtxt')
+PATH_TO_LABELS = os.path.join(MODEL_NAME, 'kitti_label_map.json')
 NUM_CLASSES = 2
 
 def parse_args():
@@ -63,10 +63,11 @@ def load_image_into_numpy_array(image):
     return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
 
 def detect_images(images, graph):
-    count = 0
-    label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
-    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
-    category_index = label_map_util.create_category_index(categories)
+    with open(PATH_TO_LABELS) as f:
+        cat_array = json.load(f)
+    category_index = {}
+    for index, item in enumerate(cat_array):
+        category_index[index+1] = item
 
     with graph.as_default():
         sess = tf.Session(graph=graph)
@@ -80,6 +81,7 @@ def detect_images(images, graph):
             os.makedirs('output')
 
         start = datetime.datetime.now()
+        count = 0
         for image_name in images:
             try:
                 image = Image.open(image_name)
@@ -89,7 +91,7 @@ def detect_images(images, graph):
                     feed_dict={image_tensor: np.expand_dims(image, 0)}
                 )
 
-                vis_util.visualize_boxes_and_labels_on_image_array(
+                image_util.visualize_boxes_and_labels_on_image_array(
                     image_np,
                     np.squeeze(boxes),
                     np.squeeze(classes).astype(np.int32),
