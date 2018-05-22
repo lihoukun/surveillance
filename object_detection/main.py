@@ -66,21 +66,6 @@ def prepare_images(args):
             images.append(image_np)
     return images
 
-def save_video():
-    image_folder = 'output'
-    video_name = 'video.mp4'
-
-    images = [img for img in os.listdir(image_folder) if img.endswith(".jpg")]
-    frame = cv2.imread(os.path.join(image_folder, images[0]))
-    height, width, layers = frame.shape
-
-    video = cv2.VideoWriter(video_name, -1, 1, (width, height))
-
-    for image in images:
-        video.write(cv2.imread(os.path.join(image_folder, image)))
-
-    cv2.destroyAllWindows()
-    video.release()
 
 def prepare_model():
     if not os.path.isfile(PATH_TO_CKPT):
@@ -162,8 +147,7 @@ def main():
         images = prepare_video(args)
         if images:
             detect_images(images, detection_graph)
-            save_video()
-
+    	    os.system(r'ffmpeg -r 24 -i output/%d.jpg -vcodec mpeg4 -y movie.mp4')
 
 if __name__ == '__main__':
     main()
