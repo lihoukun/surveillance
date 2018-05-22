@@ -6,6 +6,7 @@ import tensorflow as tf
 import argparse
 import datetime
 import json
+import cv2
 
 from PIL import Image
 
@@ -24,19 +25,62 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', help='input image, seperate by commar')
     parser.add_argument('--image_path', help='input image path')
+    parser.add_argument('--video', help='local video file')
+    parser.add_argument('--video_skip', help='frame skip interval', type=int)
     args = parser.parse_args()
     return args
+
+def prepare_video(args):
+    images = []
+    if args.video:
+        if not os.path.isfile(args.video):
+            print('video not exist at {}'.format(args.video))
+            exit(1)
+        cap = cv2.VideoCapture(args.video)
+        if args.video_skip:
+            skip = args.video_skip
+        else:
+            skip = 0
+        while(1):
+            ret, image = cap.read()
+            if not ret: break
+            images.append(image)
+            for _ in range(skip):
+                ret, image = cap.read()
+
+    return images
+
 
 def prepare_images(args):
     images = []
     if args.image:
-        for image in args.image.split(','):
-            if os.path.isfile((image)):
-                images.append(image)
+        for image_name in args.image.split(','):
+            if os.path.isfile((image_name)):
+                image = Image.open(image_name)
+                image_np = load_image_into_numpy_array(image)
+                images.append(image_np)
     elif args.image_path:
         for image_name in os.listdir(args.image_path):
-            images.append(os.path.join(args.image_path, image_name))
+            image = Image.open(os.path.join(args.image_path, image_name))
+            image_np = load_image_into_numpy_array(image)
+            images.append(image_np)
     return images
+
+def save_video():
+    image_folder = 'output'
+    video_name = 'video.mp4'
+
+    images = [img for img in os.listdir(image_folder) if img.endswith(".jpg")]
+    frame = cv2.imread(os.path.join(image_folder, images[0]))
+    height, width, layers = frame.shape
+
+    video = cv2.VideoWriter(video_name, -1, 1, (width, height))
+
+    for image in images:
+        video.write(cv2.imread(os.path.join(image_folder, image)))
+
+    cv2.destroyAllWindows()
+    video.release()
 
 def prepare_model():
     if not os.path.isfile(PATH_TO_CKPT):
@@ -81,14 +125,12 @@ def detect_images(images, graph):
             os.makedirs('output')
 
         start = datetime.datetime.now()
-        count = 0
-        for image_name in images:
+        count = 1
+        for image_np in images:
             try:
-                image = Image.open(image_name)
-                image_np = load_image_into_numpy_array(image)
                 (boxes, scores, classes, num) = sess.run(
                     [detection_boxes, detection_scores, detection_classes, num_detections],
-                    feed_dict={image_tensor: np.expand_dims(image, 0)}
+                    feed_dict={image_tensor: np.expand_dims(image_np, 0)}
                 )
 
                 image_util.visualize_boxes_and_labels_on_image_array(
@@ -101,19 +143,27 @@ def detect_images(images, graph):
                 )
 
                 image = Image.fromarray(image_np)
-                image.save('output/new_{}'.format(os.path.basename(image_name)))
+                image.save('output/{}.jpg'.format(count))
                 count += 1
             except:
                 print('fail to handle image {}'.format(image_name))
                 continue
         end = datetime.datetime.now()
         print('total time: {}'.format(end-start))
-        print('total image: {}'.format(count))
+        print('total image: {}'.format(count-1))
 
 def main():
     detection_graph = prepare_model()
-    images = prepare_images(parse_args())
-    detect_images(images, detection_graph)
+    args = parse_args()
+    images = prepare_images(args)
+    if images:
+        detect_images(images, detection_graph)
+    else:
+        images = prepare_video(args)
+        if images:
+            detect_images(images, detection_graph)
+            save_video()
+
 
 if __name__ == '__main__':
     main()
