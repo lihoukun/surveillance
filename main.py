@@ -9,7 +9,7 @@ import json
 import cv2
 import yaml
 
-import image_util
+from object_detection import image_util
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -48,15 +48,17 @@ def prepare_images(args):
             print('capture video failed')
     return images
 
-def prepare_od_model():
+def get_cfg(name):
     with open('models.yml', 'r') as f:
         cfg = yaml.load(f)
-
-    od_cfg = cfg['object_detection']
-    if not os.path.isfile(od_cfg['pb_path']):
+    return cfg[name]
+    
+def prepare_od_model():
+    cfg = get_cfg('object_detection')
+    if not os.path.isfile(cfg['pb_path']):
         opener = urllib.request.URLopener()
-        opener.retrieve(od_cfg['download_path'])
-        tar_file = tarfile.open('{}.tar.gz'.format(od_cfg['model_name']))
+        opener.retrieve(cfg['download_path'], '{}.tar.gz'.format(cfg['model_name']))
+        tar_file = tarfile.open('{}.tar.gz'.format(cfg['model_name']))
         for file in tar_file.getmembers():
             file_name = os.path.basename(file.name)
             if 'frozen_inference_graph.pb' in file_name:
@@ -65,15 +67,16 @@ def prepare_od_model():
     detection_graph = tf.Graph()
     with detection_graph.as_default():
         od_graph_def = tf.GraphDef()
-        with tf.gfile.GFile(od_cfg['pb_path'], 'rb') as fid:
+        with tf.gfile.GFile(cfg['pb_path'], 'rb') as fid:
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
     return detection_graph
 
 
-def detect_images(images, graph):
-    with open(PATH_TO_LABELS) as f:
+def object_detect(images, graph):
+    cfg = get_cfg('object_detection')
+    with open(cfg['label_path']) as f:
         cat_array = json.load(f)
     category_index = {}
     for index, item in enumerate(cat_array):
@@ -122,7 +125,7 @@ def main():
     images = prepare_images(args)
     if 'od' in args.stages:
         detection_graph = prepare_od_model()
-        images = detect_images(images, detection_graph)
+        images = object_detect(images, detection_graph)
     if args.video and args.output_type == 'bbox':
         os.system(r'ffmpeg -r 24 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
 
