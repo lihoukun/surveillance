@@ -1,0 +1,7 @@
+object_detection:
+  model_name: faster_rcnn_resnet101_kitti
+  download_path: http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_kitti_2018_01_28.tar.gz
+  label_path: kitti_label_map.json
+  pb_path: object_detection/faster_rcnn_resnet101_kitti_018_01_28/frozen_inference_graph.pb
+  num_classes: 2
+
