@@ -87,7 +87,7 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
         cat = category_index[classes[i]]['name']
         if cat not in fimage:
             fimage['detections'][cat] = {}
-        fimage['detections'][cat][len(fimage[cat])+1] = {'bbox': boxes[i].tolist(), 'score': float(scores[i])}
+        fimage['detections'][cat][len(fimage['detections'][cat])+1] = {'bbox': boxes[i].tolist(), 'score': float(scores[i])}
 
 def object_detect(images, graph):
     cfg = get_cfg('object_detection')
@@ -118,12 +118,11 @@ def object_detect(images, graph):
                     [detection_boxes, detection_scores, detection_classes, num_detections],
                     feed_dict={image_tensor: np.expand_dims(image_np, 0)}
                 )
-
-                update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes).astype(np.int32), int(num[0]))
-                count += 1
             except:
-                print('fail to handle image {}'.format(fimage.image_path))
+                print('fail to handle image {}'.format(fimage['image_path']))
                 continue
+            update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes).astype(np.int32), int(num[0]))
+            count += 1
         end = datetime.datetime.now()
         print('total time: {}'.format(end-start))
         print('total image: {}'.format(len(images)))

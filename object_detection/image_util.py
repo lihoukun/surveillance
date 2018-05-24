@@ -449,7 +449,7 @@ def visualize_box_and_label_on_image_array(
   box_to_color_map = collections.defaultdict(str)
 
   color_index = 0
-  for cat, v1 in fimage['detetions']:
+  for cat, v1 in fimage['detections'].items():
     color_index += 1
     for id, v2 in v1.items():
       score = v2['score']
