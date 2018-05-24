@@ -126,7 +126,10 @@ def object_detect(images, graph):
                     category_index,
                     use_normalized_coordinates=True
                 )
-
+                print(boxes)
+                print(scores)
+                print(classes)
+                print(num)
                 cv2.imwrite('output/{}.jpg'.format(count), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
                 count += 1
             except:
