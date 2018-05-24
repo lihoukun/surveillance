@@ -93,10 +93,12 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
     category_index = {}
     for item in cat_array:
         category_index[item['id']] = item
-    print(scores)
-    print(classes)
-    print(boxes)
 
+    for i in range(num):
+        cat = category_index[classes[i]]['name']
+        if cat not in fimage:
+            fimage[cat] = {}
+        fimage[cat][len(fimage[cat])+1] = {'bbox': boxes[i], 'score': scores[i]}
 
 def object_detect(images, graph):
     cfg = get_cfg('object_detection')
@@ -147,12 +149,17 @@ def object_detect(images, graph):
         print('total time: {}'.format(end-start))
         print('total image: {}'.format(count-1))
 
+def save_json(images):
+    with open('result.yml', 'w+') as f:
+        yaml.dump(images, f, default_flow_style=False)
+
 def main():
     args = parse_args()
     images = prepare_images(args)
     if 'od' in args.stages:
         detection_graph = prepare_od_model()
-        images = object_detect(images, detection_graph)
+        object_detect(images, detection_graph)
+        save_json(images)
     if args.video and args.output_type == 'bbox':
         os.system(r'ffmpeg -r 24 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
 
