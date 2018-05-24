@@ -142,12 +142,13 @@ def save_image(images, method):
                 os.makedirs(base_dir)
 
             image_np = cv2.imread(fimage['image_path'])
-            for cat, v1 in fimage.items():
+            for cat, v1 in fimage['detections'].items():
                 for id, v2 in v1.items():
                     image_name = '{}_{}.jpg'.format(cat, id)
-                    im_width, im_height = image_np.size
-                    (left, right, top, bottom) = (v2['bbox'][1] * im_width, v2['bbox'][3] * im_width, v2['bbox'][0] * im_height, v2['bbox'][2] * im_height)
-                    image_chop = image_np[int(left):int(right), int(top):int(bottom), :]
+                    im_height, im_width, _ = image_np.shape
+                    ymin, xmin, ymax, xmax = box
+                    left, right, top, bottom = int(xmin * im_width), int(xmax * im_width), int(ymin * im_height), int(ymax * im_height)
+                    image_chop = image_np[top:bottom, left:right, :]
                     cv2.imwrite(os.path.join(base_dir, image_name), image_chop)
 
 
