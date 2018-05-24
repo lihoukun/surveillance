@@ -98,7 +98,8 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
         cat = category_index[classes[i]]['name']
         if cat not in fimage:
             fimage[cat] = {}
-        fimage[cat][len(fimage[cat])+1] = {'bbox': boxes[i], 'score': scores[i]}
+        fimage[cat][len(fimage[cat])+1] = {'bbox': boxes[i].tolist(), 'score': float(scores[i])}
+    print(fimage)
 
 def object_detect(images, graph):
     cfg = get_cfg('object_detection')
@@ -138,7 +139,7 @@ def object_detect(images, graph):
                 #    category_index,
                 #    use_normalized_coordinates=True
                 #)
-                update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes), num[0])
+                update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes).astype(np.int32), int(num[0]))
 
                 #cv2.imwrite('output/{}.jpg'.format(count), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
                 count += 1
