@@ -8,7 +8,6 @@ import datetime
 import json
 import cv2
 import yaml
-from easydict import  EasyDict
 
 from object_detection import image_util
 
@@ -31,16 +30,16 @@ def prepare_images(args):
     if args.image:
         for image_name in args.image.split(','):
             if os.path.isfile((image_name)):
-                fimage = EasyDict()
-                fimage.image_path = image_name
-                fimage.id = label
+                fimage = {}
+                fimage['image_path'] = image_name
+                fimage['id'] = label
                 images.append(fimage)
                 label += 1
     elif args.image_path:
         for image_name in sorted(os.listdir(args.image_path)):
-            fimage = EasyDict()
-            fimage.image_path = os.path.join(args.image_path, image_name)
-            fimage.id = label
+            fimage = {}
+            fimage['image_path'] = os.path.join(args.image_path, image_name)
+            fimage['id'] = label
             images.append(fimage)
             label += 1
     elif args.video:
@@ -52,9 +51,9 @@ def prepare_images(args):
                 ret, image = cap.read()
                 if not ret: break
                 cv2.imwrite('input/{}.jpg'.format(label), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-                fimage = EasyDict()
-                fimage.image_path = 'input/{}.jpg'.format(label)
-                fimage.id = label
+                fimage = {}
+                fimage['image_path'] = 'input/{}.jpg'.format(label)
+                fimage['id'] = label
                 images.append(fimage)
                 label += 1
         except:
@@ -87,14 +86,25 @@ def prepare_od_model():
             tf.import_graph_def(od_graph_def, name='')
     return detection_graph
 
+def update_fimage_from_od(fimage, boxes, scores, classes, num):
+    cfg = get_cfg('object_detection')
+    with open(cfg['label_path']) as f:
+        cat_array = json.load(f)
+    category_index = {}
+    for item in cat_array:
+        category_index[item['id']] = item
+    print(scores)
+    print(classes)
+    print(boxes)
+
 
 def object_detect(images, graph):
     cfg = get_cfg('object_detection')
     with open(cfg['label_path']) as f:
         cat_array = json.load(f)
     category_index = {}
-    for index, item in enumerate(cat_array):
-        category_index[index+1] = item
+    for item in cat_array:
+        category_index[item['id']] = item
 
     with graph.as_default():
         sess = tf.Session(graph=graph)
@@ -110,7 +120,7 @@ def object_detect(images, graph):
         start = datetime.datetime.now()
         count = 1
         for fimage in images:
-            image_np = cv2.imread(fimage.image_path)
+            image_np = cv2.imread(fimage['image_path'])
             image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
             try:
                 (boxes, scores, classes, num) = sess.run(
@@ -118,19 +128,17 @@ def object_detect(images, graph):
                     feed_dict={image_tensor: np.expand_dims(image_np, 0)}
                 )
 
-                image_util.visualize_boxes_and_labels_on_image_array(
-                    image_np,
-                    np.squeeze(boxes),
-                    np.squeeze(classes).astype(np.int32),
-                    np.squeeze(scores),
-                    category_index,
-                    use_normalized_coordinates=True
-                )
-                print(boxes)
-                print(scores)
-                print(classes)
-                print(num)
-                cv2.imwrite('output/{}.jpg'.format(count), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+                #image_util.visualize_boxes_and_labels_on_image_array(
+                #    image_np,
+                #    np.squeeze(boxes),
+                #    np.squeeze(classes).astype(np.int32),
+                #    np.squeeze(scores),
+                #    category_index,
+                #    use_normalized_coordinates=True
+                #)
+                update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes), num[0])
+
+                #cv2.imwrite('output/{}.jpg'.format(count), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
                 count += 1
             except:
                 print('fail to handle image {}'.format(fimage.image_path))
