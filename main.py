@@ -136,6 +136,20 @@ def save_image(images, method):
         if method == 'bbox':
             image_np = image_util.visualize_box_and_label_on_image_array(fimage)
             cv2.imwrite('output/{}.jpg'.format(id), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+        elif method == 'chop':
+            base_dir = os.path.join('output', str(id))
+            if not os.path.isdir(base_dir):
+                os.makedirs(base_dir)
+
+            image_np = cv2.imread(fimage['image_path'])
+            for cat, v1 in fimage.items():
+                for id, v2 in v1.items():
+                    image_name = '{}_{}.jpg'.format(cat, id)
+                    im_width, im_height = image_np.size
+                    (left, right, top, bottom) = (v2['bbox'][1] * im_width, v2['bbox'][3] * im_width, v2['bbox'][0] * im_height, v2['bbox'][2] * im_height)
+                    image_chop = image_np[int(left):int(right), int(top):int(bottom), :]
+                    cv2.imwrite(os.path.join(base_dir, image_name), image_chop)
+
 
 def main():
     args = parse_args()
@@ -143,10 +157,11 @@ def main():
     if 'od' in args.stages:
         detection_graph = prepare_od_model()
         object_detect(images, detection_graph)
-    if args.video and args.output_type == 'bbox':
-        os.system(r'ffmpeg -r 24 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
     save_json(images)
     save_image(images, args.output_type)
+
+    if args.video and args.output_type == 'bbox':
+        os.system(r'ffmpeg -r 24 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
 
 if __name__ == '__main__':
     main()
