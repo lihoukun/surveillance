@@ -25,23 +25,14 @@ def parse_args():
     return args
 
 def prepare_images(args):
-    images = []
-    label = 0
+    images = {}
     if args.image:
         for image_name in args.image.split(','):
             if os.path.isfile((image_name)):
-                fimage = {}
-                fimage['image_path'] = image_name
-                fimage['id'] = label
-                images.append(fimage)
-                label += 1
+                images[len(images)+1] = {'image_path': image_name}
     elif args.image_path:
         for image_name in sorted(os.listdir(args.image_path)):
-            fimage = {}
-            fimage['image_path'] = os.path.join(args.image_path, image_name)
-            fimage['id'] = label
-            images.append(fimage)
-            label += 1
+            images[len(images)+1] = {'image_path': os.path.join(args.image_path, image_name)}
     elif args.video:
         try:
             if not os.path.isdir('input'):
@@ -50,12 +41,9 @@ def prepare_images(args):
             while(1):
                 ret, image = cap.read()
                 if not ret: break
-                cv2.imwrite('input/{}.jpg'.format(label), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-                fimage = {}
-                fimage['image_path'] = 'input/{}.jpg'.format(label)
-                fimage['id'] = label
-                images.append(fimage)
-                label += 1
+                i = len(images) + 1
+                cv2.imwrite('input/{}.jpg'.format(i), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+                images[i] = {'image_path': 'input/{}.jpg'.format(i)}
         except:
             print('capture video failed')
             exit(1)
@@ -122,7 +110,7 @@ def object_detect(images, graph):
 
         start = datetime.datetime.now()
         count = 1
-        for fimage in images:
+        for id, fimage in images.items():
             image_np = cv2.imread(fimage['image_path'])
             image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
             try:
@@ -148,7 +136,7 @@ def object_detect(images, graph):
                 continue
         end = datetime.datetime.now()
         print('total time: {}'.format(end-start))
-        print('total image: {}'.format(count-1))
+        print('total image: {}'.format(len(images)))
 
 def save_json(images):
     with open('result.yml', 'w+') as f:
