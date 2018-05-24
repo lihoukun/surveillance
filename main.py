@@ -85,7 +85,7 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
     fimage['detections'] = {}
     for i in range(num):
         cat = category_index[classes[i]]['name']
-        if cat not in fimage:
+        if cat not in fimage['detections']:
             fimage['detections'][cat] = {}
         fimage['detections'][cat][len(fimage['detections'][cat])+1] = {'bbox': boxes[i].tolist(), 'score': float(scores[i])}
 
