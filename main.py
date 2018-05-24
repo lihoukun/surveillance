@@ -82,12 +82,12 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
     for item in cat_array:
         category_index[item['id']] = item
 
+    fimage['detections'] = {}
     for i in range(num):
         cat = category_index[classes[i]]['name']
         if cat not in fimage:
-            fimage[cat] = {}
-        fimage[cat][len(fimage[cat])+1] = {'bbox': boxes[i].tolist(), 'score': float(scores[i])}
-    print(fimage)
+            fimage['detections'][cat] = {}
+        fimage['detections'][cat][len(fimage[cat])+1] = {'bbox': boxes[i].tolist(), 'score': float(scores[i])}
 
 def object_detect(images, graph):
     cfg = get_cfg('object_detection')
@@ -119,17 +119,7 @@ def object_detect(images, graph):
                     feed_dict={image_tensor: np.expand_dims(image_np, 0)}
                 )
 
-                #image_util.visualize_boxes_and_labels_on_image_array(
-                #    image_np,
-                #    np.squeeze(boxes),
-                #    np.squeeze(classes).astype(np.int32),
-                #    np.squeeze(scores),
-                #    category_index,
-                #    use_normalized_coordinates=True
-                #)
                 update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes).astype(np.int32), int(num[0]))
-
-                #cv2.imwrite('output/{}.jpg'.format(count), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
                 count += 1
             except:
                 print('fail to handle image {}'.format(fimage.image_path))
@@ -142,15 +132,22 @@ def save_json(images):
     with open('result.yml', 'w+') as f:
         yaml.dump(images, f, default_flow_style=False)
 
+def save_image(images, method):
+    for id, fimage in images.items():
+        if method == 'bbox':
+            image_np = image_util.visualize_box_and_label_on_image_array(fimage)
+            cv2.imwrite('output/{}.jpg'.format(id), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+
 def main():
     args = parse_args()
     images = prepare_images(args)
     if 'od' in args.stages:
         detection_graph = prepare_od_model()
         object_detect(images, detection_graph)
-        save_json(images)
     if args.video and args.output_type == 'bbox':
         os.system(r'ffmpeg -r 24 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
+    save_json(images)
+    save_image(images, args.output_type)
 
 if __name__ == '__main__':
     main()

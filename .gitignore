@@ -91,7 +91,10 @@ ENV/
 # PyCharm
 .idea/
 
-# large files
+# input ouput files
 *.pb
 *.tar.gz
+result.*
+input/*
+output/*
 
