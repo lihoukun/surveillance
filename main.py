@@ -8,6 +8,7 @@ import datetime
 import json
 import cv2
 import yaml
+from easydict import  EasyDict
 
 from object_detection import image_util
 
@@ -26,26 +27,39 @@ def parse_args():
 
 def prepare_images(args):
     images = []
+    label = 0
     if args.image:
         for image_name in args.image.split(','):
             if os.path.isfile((image_name)):
-                image_np = cv2.imread(image_name)
-                image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
-                images.append(image_np)
+                fimage = EasyDict()
+                fimage.image_path = image_name
+                fimage.id = label
+                images.append(fimage)
+                label += 1
     elif args.image_path:
-        for image_name in os.listdir(args.image_path):
-            image_np = cv2.imread(os.path.join(args.image_path, image_name))
-            image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
-            images.append(image_np)
+        for image_name in sorted(os.listdir(args.image_path)):
+            fimage = EasyDict()
+            fimage.image_path = os.path.join(args.image_path, image_name)
+            fimage.id = label
+            images.append(fimage)
+            label += 1
     elif args.video:
         try:
+            if not os.path.isdir('input'):
+                os.makedirs('input')
             cap = cv2.VideoCapture(args.video)
             while(1):
                 ret, image = cap.read()
                 if not ret: break
-                images.append(image)
+                cv2.imwrite('input/{}.jpg'.format(label), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+                fimage = EasyDict()
+                fimage.image_path = 'input/{}.jpg'.format(label)
+                fimage.id = label
+                images.append(fimage)
+                label += 1
         except:
             print('capture video failed')
+            exit(1)
     return images
 
 def get_cfg(name):
@@ -95,7 +109,9 @@ def object_detect(images, graph):
 
         start = datetime.datetime.now()
         count = 1
-        for image_np in images:
+        for fimage in images:
+            image_np = cv2.imread(fimage.image_path)
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
             try:
                 (boxes, scores, classes, num) = sess.run(
                     [detection_boxes, detection_scores, detection_classes, num_detections],
@@ -114,7 +130,7 @@ def object_detect(images, graph):
                 cv2.imwrite('output/{}.jpg'.format(count), cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
                 count += 1
             except:
-                print('fail to handle image {}'.format(image_name))
+                print('fail to handle image {}'.format(fimage.image_path))
                 continue
         end = datetime.datetime.now()
         print('total time: {}'.format(end-start))
