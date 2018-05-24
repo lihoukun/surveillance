@@ -146,7 +146,7 @@ def save_image(images, method):
                 for id, v2 in v1.items():
                     image_name = '{}_{}.jpg'.format(cat, id)
                     im_height, im_width, _ = image_np.shape
-                    ymin, xmin, ymax, xmax = box
+                    ymin, xmin, ymax, xmax = v2['bbox']
                     left, right, top, bottom = int(xmin * im_width), int(xmax * im_width), int(ymin * im_height), int(ymax * im_height)
                     image_chop = image_np[top:bottom, left:right, :]
                     cv2.imwrite(os.path.join(base_dir, image_name), image_chop)
