@@ -31,7 +31,7 @@ def prepare_images(args):
             images[len(images)+1] = {'image_path': os.path.join(args.image_path, image_name)}
     elif args.video:
         image_utils.save_image_from_video('input', args.video)
-        for image_name in sorted(os.listdir('input'):
+        for image_name in sorted(os.listdir('input')):
             images[len(images)+1] = {'image_path': os.path.join('input', image_name)}
     return images
 
@@ -59,7 +59,7 @@ def main():
     images = prepare_images(args)
     if 'od' in args.stages:
         detection_graph = object_detection.prepare_model()
-        object_detection.detect(images, detection_graph)
+        images = object_detection.detect(images, detection_graph)
     save_json(images)
     save_image(images, args.output_type)
 

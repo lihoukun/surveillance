@@ -406,7 +406,7 @@ def visualize_boxes_and_labels_on_image_array(
 
   return image
 
-def read_image_to_np(image_path)
+def read_image_to_np(image_path):
     image_np = cv2.imread(image_path)
     image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
     return image_np

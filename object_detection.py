@@ -3,8 +3,11 @@ import os
 import tarfile
 import six.moves.urllib as urllib
 import tensorflow as tf
+import numpy as np
 import json
 import datetime
+
+import image_utils
 
 def get_cfg(name):
     with open('models.yml', 'r') as f:
@@ -48,6 +51,7 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
             fimage['detections'][cat] = {}
         fimage['detections'][cat][len(fimage['detections'][cat]) + 1] = {'bbox': boxes[i].tolist(),
                                                                          'score': float(scores[i])}
+    return fimage
 
 
 def detect(images, graph):
@@ -72,19 +76,15 @@ def detect(images, graph):
         start = datetime.datetime.now()
         count = 1
         for id, fimage in images.items():
-            image_np = cv2.imread(fimage['image_path'])
-            image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
-            try:
-                (boxes, scores, classes, num) = sess.run(
+            image_np = image_utils.read_image_to_np(fimage['image_path'])
+            boxes, scores, classes, num = sess.run(
                     [detection_boxes, detection_scores, detection_classes, num_detections],
                     feed_dict={image_tensor: np.expand_dims(image_np, 0)}
-                )
-            except:
-                print('fail to handle image {}'.format(fimage['image_path']))
-                continue
-            update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes).astype(np.int32),
-                                  int(num[0]))
+            )
+            update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes).astype(np.int32), int(num[0]))
             count += 1
         end = datetime.datetime.now()
         print('total time: {}'.format(end - start))
         print('total image: {}'.format(len(images)))
+
+    return images
