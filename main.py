@@ -21,7 +21,6 @@ def parse_args():
     parser.add_argument('--chop_obj', help='chop out object', action='store_true')
     parser.add_argument('--warp_face', help='warp out face', action='store_true')
 
-    parser.add_argument('--stages', choices=['od', 'fd', 'od,fd'], default='od', help='stages')
     args = parser.parse_args()
     return args
 
@@ -69,13 +68,15 @@ def save_image(images, args):
 
 def main():
     args = parse_args()
+    # raw
     images = prepare_images(args)
-    if 'od' in args.stages:
-        detection_graph = object_detection.prepare_model()
-        images = object_detection.detect(images, detection_graph)
-    if 'fd' in args.stages:
-        pnet, rnet, onet = face_detection.prepare_model()
-        images = face_detection.detect(images, pnet, rnet, onet)
+    # object detection
+    detection_graph = object_detection.prepare_model()
+    images = object_detection.detect(images, detection_graph)
+    # face detection
+    pnet, rnet, onet = face_detection.prepare_model()
+    images = face_detection.detect(images, pnet, rnet, onet)
+    # save result
     save_json(images)
     save_image(images, args)
 
