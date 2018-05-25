@@ -84,7 +84,7 @@ def detect(images, graph):
             image_count += 1
             if image_count % 100 == 0:
                 loop_end = datetime.datetime.now()
-                print('Processed to image {},  speed: {} image/second'.format(image_count, 100 / (loop_end-loop_start)))
+                print('Processed to image {},  speed: {} image/second'.format(image_count, 100 / (loop_end-loop_start).total_seconds()))
             object_count += int(num[0])
         end = datetime.datetime.now()
         print('total object detection time: {}'.format(end - start))

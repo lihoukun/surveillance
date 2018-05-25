@@ -8,6 +8,7 @@ import tensorflow as tf
 import cv2
 import os
 import datetime
+import yaml
 
 import image_utils
 
@@ -29,7 +30,8 @@ def detect(images, pnet, rnet, onet):
     for id, fimage in images.items():
         if 'person' not in fimage['detections']: continue
         for pid, data in fimage['detections']['person'].items():
-            def cord_align(y, x):
+            def cord_align(pair):
+                y, x = pair
                 ymin, xmin, ymax, xmax = data['bbox']
                 return (ymin+(ymax-ymin)*y, xmin+(xmax-xmin)*x)
 
@@ -48,13 +50,13 @@ def detect(images, pnet, rnet, onet):
                 data['face'] = {}
                 ymin, xmin = cord_align(bounding_boxes[bindex, 0:2])
                 ymax, xmax = cord_align(bounding_boxes[bindex, 2:4])
-                data['face']['bbox'] = [ymin, xmin, ymax, xmax]
+                data['face']['bbox'] = np.array([ymin, xmin, ymax, xmax]).tolist()
                 #data['face']['landmark'] = points[:, bindex].reshape((2, 5)).T
                 face_count += 1
             person_count += 1
             if person_count % 100 == 0:
                 loop_end = datetime.datetime.now()
-                print('Processed to person {},  speed: {} image/second'.format(person_count, 100 / (loop_end - loop_start)))
+                print('Processed to person {},  speed: {} image/second'.format(person_count, 100 / (loop_end - loop_start).total_seconds()))
 
     end = datetime.datetime.now()
     print('total face detection time: {}'.format(end - start))
@@ -309,7 +311,7 @@ class ONet(Network):
 def create_mtcnn(sess):
     with open('models.yml', 'r') as f:
         cfg = yaml.load(f)
-    model_path = cfg['face_detection']['modelpath']
+    model_path = cfg['face_detection']['model_path']
 
     with tf.variable_scope('pnet'):
         data = tf.placeholder(tf.float32, (None, None, None, 3), 'input')
