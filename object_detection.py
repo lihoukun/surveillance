@@ -70,21 +70,24 @@ def detect(images, graph):
         detection_classes = graph.get_tensor_by_name('detection_classes:0')
         num_detections = graph.get_tensor_by_name('num_detections:0')
 
-        if not os.path.isdir('output'):
-            os.makedirs('output')
-
         start = datetime.datetime.now()
-        count = 1
+        image_count = 0
+        object_count = 0
         for id, fimage in images.items():
+            loop_start = datetime.datetime.now()
             image_np = image_utils.read_image_to_np(fimage['image_path'])
             boxes, scores, classes, num = sess.run(
                     [detection_boxes, detection_scores, detection_classes, num_detections],
                     feed_dict={image_tensor: np.expand_dims(image_np, 0)}
             )
             update_fimage_from_od(fimage, np.squeeze(boxes), np.squeeze(scores), np.squeeze(classes).astype(np.int32), int(num[0]))
-            count += 1
+            image_count += 1
+            if image_count % 100 == 0:
+                loop_end = datetime.datetime.now()
+                print('Processed to image {},  speed: {} image/second'.format(image_count, 100 / (loop_end-loop_start)))
+            object_count += int(num[0])
         end = datetime.datetime.now()
-        print('total time: {}'.format(end - start))
-        print('total image: {}'.format(len(images)))
+        print('total object detection time: {}'.format(end - start))
+        print('total detected objects: {}'.format(object_count))
 
     return images

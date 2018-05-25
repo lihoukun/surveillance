@@ -469,6 +469,11 @@ def visualize_box_and_label_on_image_array(
             display_str = '{}: {}%'.format(display_str, int(100*score))
         box_to_display_str_map[box].append(display_str)
         box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
+      if cat == 'person' and face in v2:
+        display_str = 'face_id: {}'.format(id)
+        box = tuple(v2['face']['bbox'])
+        box_to_display_str_map[box].append(display_str)
+        box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
 
   # Draw all boxes onto image.
   for box, color in box_to_color_map.items():
@@ -495,7 +500,7 @@ def save_image_from_video(save_path, video_path):
         while (1):
             ret, image = cap.read()
             if not ret: break
-            cv2.imwrite('{}/{}.jpg'.format(save_path, count), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+            save_image_from_np('{}/{}.jpg'.format(save_path, count), image)
             count += 1
     except:
         print('capture video failed')
@@ -503,11 +508,17 @@ def save_image_from_video(save_path, video_path):
 
 def save_image_from_fimage(save_path, fimage):
     image_np = visualize_box_and_label_on_image_array(fimage)
+    save_image_from_np(save_path, image_np)
+
+def save_image_from_np(save_path, image_np):
     cv2.imwrite(save_path, cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
 
-def save_image_from_np_with_box(save_path, bbox, image_np):
+def read_image_from_np_with_box(bbox, image_np):
     im_height, im_width, _ = image_np.shape
     ymin, xmin, ymax, xmax = bbox
     left, right, top, bottom = int(xmin * im_width), int(xmax * im_width), int(ymin * im_height), int(ymax * im_height)
     image_chop = image_np[top:bottom, left:right, :]
-    cv2.imwrite(save_path, cv2.cvtColor(image_chop, cv2.COLOR_RGB2BGR))
+    return image_chop
+
+def resize_image_from_np(image_np):
+    return cv2.resize(image_np, (112,112))
