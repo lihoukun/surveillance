@@ -30,10 +30,12 @@ def detect(images, pnet, rnet, onet):
     for id, fimage in images.items():
         if 'person' not in fimage['detections']: continue
         for pid, data in fimage['detections']['person'].items():
-            def cord_align(pair):
-                y, x = pair
+            def cord_y_align(y, height):
                 ymin, xmin, ymax, xmax = data['bbox']
-                return (ymin+(ymax-ymin)*y, xmin+(xmax-xmin)*x)
+                return float(ymin+(ymax-ymin)*y/height)
+            def cord_x_align(x, width):
+                ymin, xmin, ymax, xmax = data['bbox']
+                return float(xmin+(xmax-xmin)*x/width)
 
             loop_start = datetime.datetime.now()
             image_path = fimage['image_path']
@@ -42,15 +44,18 @@ def detect(images, pnet, rnet, onet):
                 continue
             image_np = image_utils.read_image_to_np(image_path)
             image_np = image_utils.read_image_from_np_with_box(data['bbox'], image_np)
+            im_height, im_width, _ = image_np.shape
 
             bounding_boxes, points = detect_face(image_np, minsize, pnet, rnet, onet, threshold, factor)
             nrof_faces = bounding_boxes.shape[0]
             if nrof_faces > 0:
                 bindex = 0
                 data['face'] = {}
-                ymin, xmin = cord_align(bounding_boxes[bindex, 0:2])
-                ymax, xmax = cord_align(bounding_boxes[bindex, 2:4])
-                data['face']['bbox'] = np.array([ymin, xmin, ymax, xmax]).tolist()
+                ymin = cord_y_align(bounding_boxes[bindex, 0], im_height)
+                xmin = cord_x_align(bounding_boxes[bindex, 1], im_width)
+                ymax = cord_y_align(bounding_boxes[bindex, 2], im_height)
+                xmax = cord_x_align(bounding_boxes[bindex, 3], im_width)
+                data['face']['bbox'] = [ymin, xmin, ymax, xmax]
                 #data['face']['landmark'] = points[:, bindex].reshape((2, 5)).T
                 face_count += 1
             person_count += 1
