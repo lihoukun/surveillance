@@ -57,12 +57,12 @@ def save_image(images, args):
             for cat, v1 in fimage['detections'].items():
                 for pid, v2 in v1.items():
                     if args.chop_obj:
-                        image_name = '{}_{}_{}.jpg'.format(id, cat, pid)
+                        image_name = '{}_{}_{}_chop.jpg'.format(id, cat, pid)
                         image_chop = image_utils.read_image_from_np_with_box(v2['bbox'], image_np)
                         image_utils.save_image_from_np(os.path.join('output', image_name), image_chop)
-                    if args.warp_face and 'face' in v2:
-                        image_name = '{0}_{1}_{2}_{2}.jpg'.format(id, cat, pid)
-                        image_chop = image_utils.read_image_from_np_with_box(v2['face']['bbox'], image_np)
+                    if args.warp_face and cat == 'face':
+                        image_name = '{}_face_{}_warp.jpg'.format(id, pid)
+                        image_chop = image_utils.read_image_from_np_with_box(v2['bbox'], image_np)
                         image_utils.save_image_from_np(os.path.join('output', image_name), image_utils.resize_image_from_np(image_chop))
 
 

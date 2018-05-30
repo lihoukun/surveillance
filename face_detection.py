@@ -25,43 +25,61 @@ def detect(images, pnet, rnet, onet):
     factor = 0.85
 
     start = datetime.datetime.now()
-    person_count = 0
+    image_count = 0
     face_count = 0
     for id, fimage in images.items():
         if 'person' not in fimage['detections']: continue
-        for pid, data in fimage['detections']['person'].items():
-            def cord_y_align(y, height):
-                ymin, xmin, ymax, xmax = data['bbox']
-                return float(ymin+(ymax-ymin)*y/height)
-            def cord_x_align(x, width):
-                ymin, xmin, ymax, xmax = data['bbox']
-                return float(xmin+(xmax-xmin)*x/width)
 
-            loop_start = datetime.datetime.now()
-            image_path = fimage['image_path']
-            if not os.path.exists(image_path):
-                print('image not found (%s)' % image_path)
-                continue
-            image_np = image_utils.read_image_to_np(image_path)
-            image_np = image_utils.read_image_from_np_with_box(data['bbox'], image_np)
-            im_height, im_width, _ = image_np.shape
+        loop_start = datetime.datetime.now()
+        image_path = fimage['image_path']
+        if not os.path.exists(image_path):
+            print('image not found (%s)' % image_path)
+            continue
+        image_np = image_utils.read_image_to_np(image_path)
+        im_height, im_width, _ = image_np.shape
 
-            bounding_boxes, points = detect_face(image_np, minsize, pnet, rnet, onet, threshold, factor)
-            nrof_faces = bounding_boxes.shape[0]
-            if nrof_faces > 0:
-                bindex = 0
-                data['face'] = {}
-                ymin = cord_y_align(bounding_boxes[bindex, 0], im_height)
-                xmin = cord_x_align(bounding_boxes[bindex, 1], im_width)
-                ymax = cord_y_align(bounding_boxes[bindex, 2], im_height)
-                xmax = cord_x_align(bounding_boxes[bindex, 3], im_width)
-                data['face']['bbox'] = [ymin, xmin, ymax, xmax]
-                #data['face']['landmark'] = points[:, bindex].reshape((2, 5)).T
+        bounding_boxes, points = detect_face(image_np, minsize, pnet, rnet, onet, threshold, factor)
+        nrof_faces = bounding_boxes.shape[0]
+        if nrof_faces > 0:
+            pboxes = []
+            pids = []
+            for pid, data in fimage['detections']['person'].items():
+                pids.append(pid)
+                pboxes.append(data['bbox'])
+
+            fimage['detections']['face'] = {}
+
+            def assign_face_to_person(fbox, pboxes, pid):
+                fymin, fxmin, fymax, fxmax = fbox
+                chosen_id = -1
+                min_area = 0
+                for index, pbox in enumerate(pboxes):
+                    if pids[index] in fimage['detections']['face']: continue
+                    pymin, pxmin, pymax, pxmax = pbox
+                    if pxmin > fxmin or pymin > fymin or pxmax < fxmax or pymax < fymax: continue
+                    area = (pymax-pymin) * (pxmax-pxmin)
+                    if area < min_area:
+                        min_area = area
+                        chosen_id = pids[index]
+                if chosen_id >= 0:
+                    fimage['detections']['face'][chosen_id]['bbox'] = fbox[:4]
+                    fimage['detections']['face'][chosen_id]['score'] = fbox[4]
+
+
+            for i in range(nrof_faces):
+                xmin = bounding_boxes[i, 0] / im_width
+                ymin = bounding_boxes[i, 1] / im_height
+                xmax = bounding_boxes[i, 2] / im_width
+                ymax = bounding_boxes[i, 3] / im_height
+                score = bounding_boxes[i, 4]
+                fbox = (ymin, xmin, ymax, xmax)
+                assign_face_to_person(fbox, pboxes, pids)
                 face_count += 1
-            person_count += 1
-            if person_count % 100 == 0:
-                loop_end = datetime.datetime.now()
-                print('Processed to person {},  speed: {} image/second'.format(person_count, 100 / (loop_end - loop_start).total_seconds()))
+
+        image_count += 1
+        if image_count % 100 == 0:
+            loop_end = datetime.datetime.now()
+            print('Processed to image {},  speed: {} image/second'.format(person_count, 100 / (loop_end - loop_start).total_seconds()))
 
     end = datetime.datetime.now()
     print('total face detection time: {}'.format(end - start))
