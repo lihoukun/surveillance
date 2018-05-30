@@ -415,9 +415,9 @@ def visualize_box_and_label_on_image_array(
     fimage,
     use_normalized_coordinates=True,
     min_score_thresh=.5,
-    line_thickness=4,
-    skip_scores=False,
-    skip_labels=False):
+    line_thickness=2,
+    skip_scores=True,
+    skip_labels=True):
   """Overlay labeled boxes on an image with formatted scores and label names.
 
   This function groups boxes that correspond to the same location
@@ -469,11 +469,12 @@ def visualize_box_and_label_on_image_array(
             display_str = '{}: {}%'.format(display_str, int(100*score))
         box_to_display_str_map[box].append(display_str)
         box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
-      if cat == 'person' and face in v2:
-        display_str = 'face_id: {}'.format(id)
+      if cat == 'person' and 'face' in v2:
+        display_str = 'face: {}'.format(id)
+        display_str = ''
         box = tuple(v2['face']['bbox'])
         box_to_display_str_map[box].append(display_str)
-        box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
+        box_to_color_map[box] = 'DarkOrange'
 
   # Draw all boxes onto image.
   for box, color in box_to_color_map.items():

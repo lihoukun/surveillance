@@ -49,7 +49,7 @@ def save_image(images, args):
 
     for id, fimage in images.items():
         if args.vis_bbox:
-            image_utils.save_image_from_fimage('ouput/{}.jpg'.format(id), fimage)
+            image_utils.save_image_from_fimage('output/{}.jpg'.format(id), fimage)
             if args.video:
                 os.system(r'ffmpeg -r 24 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
         if args.chop_obj or args.warp_face:
