@@ -25,12 +25,12 @@ def detect(images, pnet, rnet, onet):
     factor = 0.85
 
     start = datetime.datetime.now()
+    loop_start = start
     image_count = 0
     face_count = 0
     for id, fimage in images.items():
         if 'person' not in fimage['detections']: continue
 
-        loop_start = datetime.datetime.now()
         image_path = fimage['image_path']
         if not os.path.exists(image_path):
             print('image not found (%s)' % image_path)
@@ -50,9 +50,9 @@ def detect(images, pnet, rnet, onet):
             fimage['detections']['face'] = {}
 
             def assign_face_to_person(fbox, pboxes, pid):
-                fymin, fxmin, fymax, fxmax = fbox
+                fymin, fxmin, fymax, fxmax, score = fbox
                 chosen_id = -1
-                min_area = 0
+                min_area = 1
                 for index, pbox in enumerate(pboxes):
                     if pids[index] in fimage['detections']['face']: continue
                     pymin, pxmin, pymax, pxmax = pbox
@@ -62,8 +62,9 @@ def detect(images, pnet, rnet, onet):
                         min_area = area
                         chosen_id = pids[index]
                 if chosen_id >= 0:
-                    fimage['detections']['face'][chosen_id]['bbox'] = fbox[:4]
-                    fimage['detections']['face'][chosen_id]['score'] = fbox[4]
+                    fimage['detections']['face'][chosen_id] = {}
+                    fimage['detections']['face'][chosen_id]['bbox'] = np.asarray(fbox[:4]).tolist()
+                    fimage['detections']['face'][chosen_id]['score'] = float(score)
 
 
             for i in range(nrof_faces):
@@ -72,14 +73,15 @@ def detect(images, pnet, rnet, onet):
                 xmax = bounding_boxes[i, 2] / im_width
                 ymax = bounding_boxes[i, 3] / im_height
                 score = bounding_boxes[i, 4]
-                fbox = (ymin, xmin, ymax, xmax)
+                fbox = (ymin, xmin, ymax, xmax, score)
                 assign_face_to_person(fbox, pboxes, pids)
                 face_count += 1
 
         image_count += 1
         if image_count % 100 == 0:
             loop_end = datetime.datetime.now()
-            print('Processed to image {},  speed: {} image/second'.format(person_count, 100 / (loop_end - loop_start).total_seconds()))
+            print('Processed to image {},  speed: {} image/second'.format(image_count, 100 / (loop_end - loop_start).total_seconds()))
+            loop_start = loop_end
 
     end = datetime.datetime.now()
     print('total face detection time: {}'.format(end - start))
@@ -261,9 +263,9 @@ class Network(object):
 
     @layer
     def softmax(self, target, axis, name=None):
-        max_axis = tf.reduce_max(target, axis, keep_dims=True)
+        max_axis = tf.reduce_max(target, axis, keepdims=True)
         target_exp = tf.exp(target - max_axis)
-        normalize = tf.reduce_sum(target_exp, axis, keep_dims=True)
+        normalize = tf.reduce_sum(target_exp, axis, keepdims=True)
         softmax = tf.div(target_exp, normalize, name)
         return softmax
 

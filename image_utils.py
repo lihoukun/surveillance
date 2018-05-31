@@ -28,6 +28,7 @@ import PIL.ImageFont as ImageFont
 import six
 import tensorflow as tf
 import cv2
+import os
 
 _TITLE_LEFT_MARGIN = 10
 _TITLE_TOP_MARGIN = 10
@@ -487,19 +488,15 @@ def visualize_box_and_label_on_image_array(
   return image_np
 
 def save_image_from_video(save_path, video_path):
-    try:
-        if not os.path.isdir(save_path):
-            os.makedirs(save_path)
-        cap = cv2.VideoCapture(video_path)
-        count = 1
-        while (1):
-            ret, image = cap.read()
-            if not ret: break
-            save_image_from_np('{}/{}.jpg'.format(save_path, count), image)
-            count += 1
-    except:
-        print('capture video failed')
-        exit(1)
+    if not os.path.isdir(save_path):
+        os.makedirs(save_path)
+    cap = cv2.VideoCapture(video_path)
+    count = 1
+    while (1):
+        ret, image = cap.read()
+        if not ret: break
+        save_image_from_np('{}/{}.jpg'.format(save_path, count), image)
+        count += 1
 
 def save_image_from_fimage(save_path, fimage):
     image_np = visualize_box_and_label_on_image_array(fimage)
