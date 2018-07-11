@@ -488,6 +488,7 @@ def visualize_box_and_label_on_image_array(
   return image_np
 
 def save_image_from_video(save_path, video_path):
+    cv2.destroyAllWindows()
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
     cap = cv2.VideoCapture(video_path)
@@ -495,15 +496,21 @@ def save_image_from_video(save_path, video_path):
     while (1):
         ret, image = cap.read()
         if not ret: break
-        save_image_from_np('{}/{}.jpg'.format(save_path, count), image)
+        save_image_from_np('{}/{}.jpg'.format(save_path, str(count).zfill(6)), image, reverse = False)
+        print('\rSaving frame {}'.format(count))
         count += 1
+        #if count > 1200: return
+    cv2.destroyAllWindows()
 
 def save_image_from_fimage(save_path, fimage):
     image_np = visualize_box_and_label_on_image_array(fimage)
     save_image_from_np(save_path, image_np)
 
-def save_image_from_np(save_path, image_np):
-    cv2.imwrite(save_path, cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+def save_image_from_np(save_path, image_np, reverse = True):
+    if reverse:
+        cv2.imwrite(save_path, cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+    else:
+        cv2.imwrite(save_path, image_np)
 
 def read_image_from_np_with_box(bbox, image_np):
     im_height, im_width, _ = image_np.shape
@@ -512,5 +519,5 @@ def read_image_from_np_with_box(bbox, image_np):
     image_chop = image_np[top:bottom, left:right, :]
     return image_chop
 
-def resize_image_from_np(image_np):
-    return cv2.resize(image_np, (112,112))
+def resize_image_from_np(image_np, height, width):
+    return cv2.resize(image_np, (width, height))
