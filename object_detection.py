@@ -1,35 +1,33 @@
-import yaml
 import os
 import tarfile
 import six.moves.urllib as urllib
 import tensorflow as tf
 import numpy as np
-import json
 import datetime
 
 import image_utils
 
-def get_cfg(name):
-    with open('models.yml', 'r') as f:
-        cfg = yaml.load(f)
-    return cfg[name]
-
-
 def prepare_model():
-    cfg = get_cfg('object_detection')
-    if not os.path.isfile(cfg['pb_path']):
+    base_dir = 'models/object_detection'
+    if not os.path.isdir(base_dir):
+        os.makedirs(base_dir)
+    pb_path = os.path.join(base_dir, 'frozen_inference_graph.pb')
+    link = 'http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_2018_01_28.tar.gz'
+    tar_name = os.path.basename(link)
+    tar_path = os.path.join(base_dir, tar_name)
+
+    if not os.path.isfile(pb_path):
         opener = urllib.request.URLopener()
-        opener.retrieve(cfg['download_path'], '{}.tar.gz'.format(cfg['model_name']))
-        tar_file = tarfile.open('{}.tar.gz'.format(cfg['model_name']))
+        opener.retrieve(link, tar_path)
+        tar_file = tarfile.open(tar_path)
         for file in tar_file.getmembers():
-            file_name = os.path.basename(file.name)
-            if 'frozen_inference_graph.pb' in file_name:
+            if 'frozen_inference_graph.pb' in os.path.basename(file.name):
                 tar_file.extract(file, './')
 
     detection_graph = tf.Graph()
     with detection_graph.as_default():
         od_graph_def = tf.GraphDef()
-        with tf.gfile.GFile(cfg['pb_path'], 'rb') as fid:
+        with tf.gfile.GFile(pb_path, 'rb') as fid:
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
@@ -37,31 +35,16 @@ def prepare_model():
 
 
 def update_fimage_from_od(fimage, boxes, scores, classes, num):
-    cfg = get_cfg('object_detection')
-    with open(cfg['label_path']) as f:
-        cat_array = json.load(f)
-    category_index = {}
-    for item in cat_array:
-        category_index[item['id']] = item
-
     fimage['detections'] = {}
+    fimage['detections']['person'] = {}
     for i in range(num):
-        cat = category_index[classes[i]]['name']
-        if cat not in fimage['detections']:
-            fimage['detections'][cat] = {}
-        fimage['detections'][cat][len(fimage['detections'][cat]) + 1] = {'bbox': boxes[i].tolist(),
+        if int(classes[i]) != 1: continue
+        fimage['detections']['person'][len(fimage['detections']['person']) + 1] = {'bbox': boxes[i].tolist(),
                                                                          'score': float(scores[i])}
     return fimage
 
 
 def detect(images, graph):
-    cfg = get_cfg('object_detection')
-    with open(cfg['label_path']) as f:
-        cat_array = json.load(f)
-    category_index = {}
-    for item in cat_array:
-        category_index[item['id']] = item
-
     with graph.as_default():
         sess = tf.Session(graph=graph)
         image_tensor = graph.get_tensor_by_name('image_tensor:0')

@@ -91,10 +91,10 @@ ENV/
 # PyCharm
 .idea/
 
-# input ouput files
-*.pb
-*.tar.gz
-result.*
-input/*
-output/*
+# models
+models/object_detection/*
+models/person_reid/*
+
+# data
+data/*
 

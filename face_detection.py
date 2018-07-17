@@ -334,9 +334,7 @@ class ONet(Network):
 
 
 def create_mtcnn(sess):
-    with open('models.yml', 'r') as f:
-        cfg = yaml.load(f)
-    model_path = cfg['face_detection']['model_path']
+    model_path = 'models/face_alignment'
 
     with tf.variable_scope('pnet'):
         data = tf.placeholder(tf.float32, (None, None, None, 3), 'input')

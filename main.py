@@ -2,8 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
-import tensorflow as tf
 import os
 import argparse
 import yaml
@@ -11,17 +9,17 @@ import yaml
 import image_utils
 import object_detection
 import face_detection
+import person_reid
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', help='input images seperated by commar')
     parser.add_argument('--image_path', help='input image path')
     parser.add_argument('--video', help='input local video file')
-    parser.add_argument('--vis_bbox', help='visualize original image with bounding box', action='store_true')
-    parser.add_argument('--chop_person', help='chop out person', action='store_true')
-    parser.add_argument('--warp_face', help='warp out face', action='store_true')
-    parser.add_argument('--input_dir', help='input dir')
-    parser.add_argument('--output_dir', help='output dir')
+    parser.add_argument('--init_db', help='initialize unlabbbled data in sqlite', action='store_true')
+    parser.add_argument('--frame_dir', help='per frame image dir for video')
+    parser.add_argument('--person_dir', help='per person image dir for video')
+    parser.add_argument('--data_dir', help='per image data dir')
 
     args = parser.parse_args()
     return args
@@ -36,16 +34,38 @@ def prepare_images(args):
         for image_name in sorted(os.listdir(args.image_path)):
             images[len(images)+1] = {'image_path': os.path.join(args.image_path, image_name)}
     elif args.video:
-        image_utils.save_image_from_video(args.input_dir, args.video)
-        for image_name in sorted(os.listdir(args.input_dir)):
-            images[os.path.splitext(image_name)[0]] = {'image_path': os.path.join(args.input_dir, image_name)}
+        image_utils.save_image_from_video(args.frame_dir, args.video)
+        for image_name in sorted(os.listdir(args.frame_dir)):
+            images[os.path.splitext(image_name)[0]] = {'image_path': os.path.join(args.frame_dir, image_name)}
     return images
 
-def save_json(images):
-    with open('result.yml', 'w+') as f:
-        yaml.dump(images, f, default_flow_style=False)
+def save_data(images, output_dir):
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
 
-def save_image(images, args):
+    for fid, v in images.items():
+        filename = os.path.join(output_dir, '{}.yml'.format(fid))
+        with open(filename, 'w+') as f:
+            yaml.dump(v, f, default_flow_style=False)
+
+def save_person(images, output_dir):
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    count = 1
+    for id, fimage in images.items():
+        image_np = image_utils.read_image_to_np(fimage['image_path'])
+        for pid, v in fimage['detections']['person'].items():
+            image_name = '{}_person_{}.jpg'.format(id, pid)
+            image_chop = image_utils.read_image_from_np_with_box(v2['bbox'], image_np)
+            person_path = os.path.join(output_dir, image_name)
+            image_utils.save_image_from_np(person_path, image_utils.resize_image_from_np(image_chop, 256, 128))
+            fimage['detections']['person']['image_path'] = person_path
+            if count % 100 == 0:
+                print('{} images finished'.format(count))
+            count += 1
+
+def no_use():
     if not os.path.isdir(args.output_dir):
         os.makedirs(args.output_dir)
 
@@ -92,8 +112,9 @@ def main():
     # pnet, rnet, onet = face_detection.prepare_model()
     # images = face_detection.detect(images, pnet, rnet, onet)
     # save result
-    save_json(images)
-    save_image(images, args)
+    save_person(images, args.person_dir)
+    save_data(images, args.data_dir)
+    person_reid.embed(images)
 
 
 if __name__ == '__main__':
