@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--frame_dir', help='per frame image dir for video')
     parser.add_argument('--person_dir', help='per person image dir for video')
     parser.add_argument('--yaml_dir', help='per image yaml dir')
-    parser.add_argument('--reid_dir', help='per image reid dir')
+    parser.add_argument('--start', help='0: gen image, 1: object detection, 2: face recognizion, 3: person reid', type=int)
 
     args = parser.parse_args()
     return args
@@ -113,24 +113,33 @@ def no_use():
 
 def main():
     args = parse_args()
-    if args.reid_dir:
-        images = load_yaml(args.yaml_dir)
-        person_reid.embed(images)
-        save_yaml(images, args.yaml_dir)
+    if args.start:
+        start = args.start
     else:
+        start = 0
+
+    if start == 0:
         images = prepare_images(args)
-    
-        # object detection
+    else:
+        images = load_yaml(args.yaml_dir)
+
+
+        save_yaml(images, args.yaml_dir)
+
+    if start <= 1:
         detection_graph = object_detection.prepare_model()
         images = object_detection.detect(images, detection_graph)
 
-        # face detection
+    if start <= 2:
         # pnet, rnet, onet = face_detection.prepare_model()
         # images = face_detection.detect(images, pnet, rnet, onet)
+        pass
 
-        # save result
+    if start <= 3:
+        person_reid.embed(images)
         save_person(images, args.person_dir)
-        save_yaml(images, args.yaml_dir)
+
+    save_yaml(images, args.yaml_dir)
 
 
 if __name__ == '__main__':
