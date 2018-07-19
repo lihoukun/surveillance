@@ -64,6 +64,7 @@ def detect(images, graph):
         loop_start = start
         image_count = 0
         object_count = 0
+        print('')
         for id, fimage in images.items():
             image_np = image_utils.read_image_to_np(fimage['image_path'])
             boxes, scores, classes, num = sess.run(
@@ -74,10 +75,11 @@ def detect(images, graph):
             image_count += 1
             if image_count % 100 == 0:
                 loop_end = datetime.datetime.now()
-                print('Processed to image {},  speed: {} image/second'.format(image_count, 100 / (loop_end-loop_start).total_seconds()))
+                print('\rProcessed to image {},  speed: {} image/second'.format(image_count, 100 / (loop_end-loop_start).total_seconds()), flush=True, end='')
                 loop_start = loop_end
             object_count += int(num[0])
         end = datetime.datetime.now()
+        print('')
         print('total object detection time: {}'.format(end - start))
         print('total detected objects: {}'.format(object_count))
 

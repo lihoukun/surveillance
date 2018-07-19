@@ -27,13 +27,6 @@ def prepare_model():
         zip_ref.extractall(cp_path)
         zip_ref.close()
 
-def fid_to_image(fid, pid, image_root):
-    """ Loads and resizes an image given by FID. Pass-through the PID. """
-    image_encoded = tf.read_file(tf.reduce_join([image_root, '/', fid]))
-    image_decoded = tf.image.decode_jpeg(image_encoded, channels=3)
-
-    return image_decoded, fid, pid
-
 def fid_to_image(image_path):
 
     """ Loads and resizes an image given by FID. Pass-through the PID. """
@@ -44,7 +37,6 @@ def fid_to_image(image_path):
     return image_resized
 
 def embed(image_dict):
-    prepare_model()
 
     ppaths = []
     for fid, fimage in image_dict.items():
@@ -72,6 +64,7 @@ def embed(image_dict):
     with tf.name_scope('head'):
         endpoints = head.head(endpoints, embedding_dim, is_training=False)
 
+    fids, pids, embeddings = [], [], []
     with tf.Session() as sess:
         checkpoint = 'models/person_reid/market1501_weights/checkpoint-25000'
         print('Restoring from checkpoint: {}'.format(checkpoint))
@@ -91,16 +84,42 @@ def embed(image_dict):
                 break  # This just indicates the end of the dataset.
 
         print("Done with embedding, aggregating augmentations...", flush=True)
+        print('')
         for i, emb in enumerate(emb_storage):
             ppath = ppaths[i]
             base_name = os.path.basename(ppath)
             m = re.search('(\d+)_person_(\d+)', base_name)
             fid = str(m.group(1)).zfill(6)
             pid = int(m.group(2))
-            print(fid, pid)
-            print('\rUpdaing image dict for fid={}, pid={}'.format(fid, pid), flush=True, end='')
-            image_dict[fid]['detections']['person'][pid]['embedding'] = emb.tolist()
+            print('\rUpdating image dict for fid={}, pid={}'.format(fid, pid), flush=True, end='')
+            fids.append(fid)
+            pids.append(pid)
+            embeddings.append(emb.tolist())
+        print('')
 
+    return (fids, pids, embeddings)
+
+
+def update_images(image_dict, fids, pids, embeddings, cluster_indices):
+    for i in range(len(fids)):
+        image_dict[fids[i]]['detections']['person'][pids[i]]['embedding'] = embeddings[i]
+        image_dict[fids[i]]['detections']['person'][pids[i]]['cluster_index'] = cluster_indices[i]
+
+def cluster(emb_vectors, k):
+    input_fn=lambda: tf.train.limit_epochs(tf.convert_to_tensor(emb_vectors, dtype=tf.float32), num_epochs=1)
+    kmeans=tf.contrib.factorization.KMeansClustering(num_clusters=k)
+    kmeans.train(input_fn=input_fn)
+    centers = kmeans.cluster_centers()
+
+    # ---- Print out -----
+    cluster_indices = list(kmeans.predict_cluster_index(input_fn))
+    return cluster_indices
+
+def reid(image_dict, num_cluster):
+    prepare_model()
+    fids, pids, embeddings = embed(image_dict)
+    cluster_indices = cluster(embeddings, num_cluster)
+    update_images(image_dict, fids, pids, embeddings, cluster_indices)
 
 if __name__ == '__main__':
-    embed()
+    reid()

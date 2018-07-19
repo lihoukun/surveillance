@@ -492,15 +492,17 @@ def save_image_from_video(save_path, video_path, max_frames):
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
     cap = cv2.VideoCapture(video_path)
+    print('')
     count = 1
     while (1):
         ret, image = cap.read()
         if not ret: break
         save_image_from_np('{}/{}.jpg'.format(save_path, str(count).zfill(6)), image, reverse = False)
-        print('\rSaving frame {}'.format(count))
+        print('\rSaving frame {}'.format(count), flush=True, end='')
         count += 1
         if max_frames and count > max_frames: break
     cv2.destroyAllWindows()
+    print('')
 
 def save_image_from_fimage(save_path, fimage):
     image_np = visualize_box_and_label_on_image_array(fimage)
