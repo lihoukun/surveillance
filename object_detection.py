@@ -11,18 +11,25 @@ def prepare_model():
     base_dir = 'models/object_detection'
     if not os.path.isdir(base_dir):
         os.makedirs(base_dir)
-    pb_path = os.path.join(base_dir, 'frozen_inference_graph.pb')
-    link = 'http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_2018_01_28.tar.gz'
+    model_name = 'faster_rcnn_resnet101_coco_2018_01_28'
+    pb_path = os.path.join(base_dir, model_name, 'frozen_inference_graph.pb')
+    link = 'http://download.tensorflow.org/models/object_detection/{}.tar.gz'.format(model_name)
     tar_name = os.path.basename(link)
     tar_path = os.path.join(base_dir, tar_name)
 
     if not os.path.isfile(pb_path):
-        opener = urllib.request.URLopener()
-        opener.retrieve(link, tar_path)
+        if not os.path.isfile(tar_path):
+            opener = urllib.request.URLopener()
+            opener.retrieve(link, tar_path)
+        print('tar file ready at {}'.format(tar_path))
         tar_file = tarfile.open(tar_path)
-        for file in tar_file.getmembers():
-            if 'frozen_inference_graph.pb' in os.path.basename(file.name):
-                tar_file.extract(file, './')
+        for filename in tar_file.getmembers():
+            if 'frozen_inference_graph.pb' in os.path.basename(filename.name):
+                tar_file.extract(filename, base_dir)
+
+    if not os.path.isfile(pb_path):
+        print('no pb file')
+        exit(1)
 
     detection_graph = tf.Graph()
     with detection_graph.as_default():

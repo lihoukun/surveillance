@@ -3,9 +3,12 @@ from itertools import count
 import os
 import sys
 import zipfile
+import re
 
 import numpy as np
 import tensorflow as tf
+
+import image_utils
 
 def prepare_model():
     base_dir = 'models/person_reid'
@@ -17,21 +20,12 @@ def prepare_model():
     zip_path = os.path.join(base_dir, zip_name)
 
     if not os.path.isfile(cp_path):
-        opener = urllib.request.URLopener()
-        opener.retrieve(link, zip_path)
+        if not os.path.isfile(zip_path):
+            os.system('wget {}'.format(link))
+            os.rename(zip_name, zip_path)
         zip_ref = zipfile.ZipFile(zip_path, 'r')
         zip_ref.extractall(cp_path)
         zip_ref.close()
-
-def prepare_dataset(images):
-    image_nps, pids, fids = [], [], []
-    for fid, fimage in images.items():
-        for pid, v in fimage['detections']['person'].items():
-            image_np = image_utils.read_image_to_np(v['image_path'])
-            image_nps.append(image_np)
-            pids.append(pid)
-            fids.append(fid)
-    return tf.data.Dataset.from_tensor_slices(image_nps) pids, fids
 
 def fid_to_image(fid, pid, image_root):
     """ Loads and resizes an image given by FID. Pass-through the PID. """
@@ -40,14 +34,33 @@ def fid_to_image(fid, pid, image_root):
 
     return image_decoded, fid, pid
 
-def embed(images):
+def fid_to_image(image_path):
+
+    """ Loads and resizes an image given by FID. Pass-through the PID. """
+    # Since there is no symbolic path.join, we just add a '/' to be sure.
+    image_encoded = tf.read_file(image_path)
+    image_decoded = tf.image.decode_jpeg(image_encoded, channels=3)
+    image_resized = tf.image.resize_images(image_decoded, (256,128))
+    return image_resized
+
+def embed(image_dict):
     prepare_model()
 
-    dataset = prepare_dataset(images)
+    ppaths = []
+    for fid, fimage in image_dict.items():
+        for pid, v in fimage['detections']['person'].items():
+            ppaths.append(v['image_path'])
+    ppaths = np.array(ppaths)
+
+    dataset = tf.data.Dataset.from_tensor_slices(ppaths)
+    dataset = dataset.map(
+        lambda ppath: fid_to_image(ppath), 
+        num_parallel_calls=8)
+
     batch_size = 256
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(1)
-    images, pids, fids = dataset.make_one_shot_iterator().get_next()
+    images = dataset.make_one_shot_iterator().get_next()
 
     # Create the model and an embedding head.
     sys.path.append(os.path.abspath('models/person_reid'))
@@ -60,26 +73,32 @@ def embed(images):
         endpoints = head.head(endpoints, embedding_dim, is_training=False)
 
     with tf.Session() as sess:
-        checkpoint = 'models/person_reid/market1501_weights'
+        checkpoint = 'models/person_reid/market1501_weights/checkpoint-25000'
         print('Restoring from checkpoint: {}'.format(checkpoint))
         tf.train.Saver().restore(sess, checkpoint)
 
         # Go ahead and embed the whole dataset, with all augmented versions too.
-        emb_storage = []
+        emb_storage = np.zeros(
+            (len(ppaths), embedding_dim), np.float32)
         for start_idx in count(step=batch_size):
             try:
                 emb = sess.run(endpoints['emb'])
                 print('\rEmbedded batch {}-{}/{}'.format(
                         start_idx, start_idx + len(emb), len(emb_storage)),
                     flush=True, end='')
-                emb_storage.append(emb)
+                emb_storage[start_idx:start_idx + len(emb)] = emb
             except tf.errors.OutOfRangeError:
                 break  # This just indicates the end of the dataset.
 
         print("Done with embedding, aggregating augmentations...", flush=True)
-        result = zip(np.array(emb_storage).flatten(), pids, fids)
-        print(result.shape)
-
+        for i, emb in enumerate(emb_storage):
+            ppath = ppaths[i]
+            base_name = os.path.basename(ppath)
+            m = re.search('(\d+)_person_(\d+)', base_name)
+            fid = str(m.group(1)).zfill(6)
+            pid = int(m.group(2))
+            print(fid, pid)
+            image_dict[fid]['detections']['person'][pid]['embedding'] = emb.tolist()
 
 
 if __name__ == '__main__':

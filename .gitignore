@@ -91,9 +91,13 @@ ENV/
 # PyCharm
 .idea/
 
+#######################
+# project ignores
+#######################
+
 # models
 models/object_detection/*
-models/person_reid/*
+models/person_reid/market1501_weights/*
 
 # data
 data/*

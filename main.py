@@ -16,10 +16,12 @@ def parse_args():
     parser.add_argument('--image', help='input images seperated by commar')
     parser.add_argument('--image_path', help='input image path')
     parser.add_argument('--video', help='input local video file')
+    parser.add_argument('--video_frames', help='max video frames to get', type=int)
     parser.add_argument('--init_db', help='initialize unlabbbled data in sqlite', action='store_true')
     parser.add_argument('--frame_dir', help='per frame image dir for video')
     parser.add_argument('--person_dir', help='per person image dir for video')
-    parser.add_argument('--data_dir', help='per image data dir')
+    parser.add_argument('--yaml_dir', help='per image yaml dir')
+    parser.add_argument('--reid_dir', help='per image reid dir')
 
     args = parser.parse_args()
     return args
@@ -34,12 +36,12 @@ def prepare_images(args):
         for image_name in sorted(os.listdir(args.image_path)):
             images[len(images)+1] = {'image_path': os.path.join(args.image_path, image_name)}
     elif args.video:
-        image_utils.save_image_from_video(args.frame_dir, args.video)
+        image_utils.save_image_from_video(args.frame_dir, args.video, args.video_frames)
         for image_name in sorted(os.listdir(args.frame_dir)):
             images[os.path.splitext(image_name)[0]] = {'image_path': os.path.join(args.frame_dir, image_name)}
     return images
 
-def save_data(images, output_dir):
+def save_yaml(images, output_dir):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
@@ -47,6 +49,14 @@ def save_data(images, output_dir):
         filename = os.path.join(output_dir, '{}.yml'.format(fid))
         with open(filename, 'w+') as f:
             yaml.dump(v, f, default_flow_style=False)
+
+def load_yaml(yaml_dir):
+    data = {}
+    for filename in sorted(os.listdir(yaml_dir)):
+        fid = filename.split('.')[0]
+        with open(os.path.join(yaml_dir, filename), 'r') as f:
+            data[fid] = yaml.load(f)
+    return data
 
 def save_person(images, output_dir):
     if not os.path.isdir(output_dir):
@@ -57,10 +67,10 @@ def save_person(images, output_dir):
         image_np = image_utils.read_image_to_np(fimage['image_path'])
         for pid, v in fimage['detections']['person'].items():
             image_name = '{}_person_{}.jpg'.format(id, pid)
-            image_chop = image_utils.read_image_from_np_with_box(v2['bbox'], image_np)
+            image_chop = image_utils.read_image_from_np_with_box(v['bbox'], image_np)
             person_path = os.path.join(output_dir, image_name)
             image_utils.save_image_from_np(person_path, image_utils.resize_image_from_np(image_chop, 256, 128))
-            fimage['detections']['person']['image_path'] = person_path
+            fimage['detections']['person'][pid]['image_path'] = person_path
             if count % 100 == 0:
                 print('{} images finished'.format(count))
             count += 1
@@ -103,18 +113,24 @@ def no_use():
 
 def main():
     args = parse_args()
-    # raw
-    images = prepare_images(args)
-    # object detection
-    detection_graph = object_detection.prepare_model()
-    images = object_detection.detect(images, detection_graph)
-    # face detection
-    # pnet, rnet, onet = face_detection.prepare_model()
-    # images = face_detection.detect(images, pnet, rnet, onet)
-    # save result
-    save_person(images, args.person_dir)
-    save_data(images, args.data_dir)
-    person_reid.embed(images)
+    if args.reid_dir:
+        images = load_yaml(args.yaml_dir)
+        person_reid.embed(images)
+        save_yaml(images, args.yaml_dir)
+    else:
+        images = prepare_images(args)
+    
+        # object detection
+        detection_graph = object_detection.prepare_model()
+        images = object_detection.detect(images, detection_graph)
+
+        # face detection
+        # pnet, rnet, onet = face_detection.prepare_model()
+        # images = face_detection.detect(images, pnet, rnet, onet)
+
+        # save result
+        save_person(images, args.person_dir)
+        save_yaml(images, args.yaml_dir)
 
 
 if __name__ == '__main__':
