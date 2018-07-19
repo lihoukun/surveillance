@@ -98,6 +98,7 @@ def embed(image_dict):
             fid = str(m.group(1)).zfill(6)
             pid = int(m.group(2))
             print(fid, pid)
+            print('\rUpdaing image dict for fid={}, pid={}'.format(fid, pid), flush=True, end='')
             image_dict[fid]['detections']['person'][pid]['embedding'] = emb.tolist()
 
 

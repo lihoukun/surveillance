@@ -13,15 +13,15 @@ import person_reid
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image', help='input images seperated by commar')
-    parser.add_argument('--image_path', help='input image path')
+    #parser.add_argument('--image', help='input images seperated by commar')
+    #parser.add_argument('--image_path', help='input image path')
     parser.add_argument('--video', help='input local video file')
     parser.add_argument('--video_frames', help='max video frames to get', type=int)
     parser.add_argument('--init_db', help='initialize unlabbbled data in sqlite', action='store_true')
     parser.add_argument('--frame_dir', help='per frame image dir for video')
     parser.add_argument('--person_dir', help='per person image dir for video')
+    parser.add_argument('--face_dir', help='per face image dir for video')
     parser.add_argument('--yaml_dir', help='per image yaml dir')
-    parser.add_argument('--start', help='0: gen image, 1: object detection, 2: face recognizion, 3: person reid', type=int)
 
     args = parser.parse_args()
     return args
@@ -45,17 +45,26 @@ def save_yaml(images, output_dir):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    for fid, v in images.items():
+    keys = sorted(images.keys())
+    print('Total {} yaml files to save'.format(len(keys)))
+    for fid in keys:
+        v = images[fid]
         filename = os.path.join(output_dir, '{}.yml'.format(fid))
+        print('\rSaving yaml file {}'.format(filename), flush=True, end='')
         with open(filename, 'w+') as f:
             yaml.dump(v, f, default_flow_style=False)
+    print('')
 
 def load_yaml(yaml_dir):
     data = {}
-    for filename in sorted(os.listdir(yaml_dir)):
+    filenames = sorted(os.listdir(yaml_dir))
+    print('Total {} yaml files to load'.format(len(filenames)))
+    for filename in filenames:
+        print('\rLoading yaml file {}'.format(filename), flush=True, end='')
         fid = filename.split('.')[0]
         with open(os.path.join(yaml_dir, filename), 'r') as f:
             data[fid] = yaml.load(f)
+    print('')
     return data
 
 def save_person(images, output_dir):
@@ -76,9 +85,6 @@ def save_person(images, output_dir):
             count += 1
 
 def no_use():
-    if not os.path.isdir(args.output_dir):
-        os.makedirs(args.output_dir)
-
     if args.vis_bbox:
         print('saving image with bbox')
         count  = 1
@@ -88,57 +94,32 @@ def no_use():
                 print('{} images finished'.format(count))
             count += 1
 
-    #if args.video:
-    #    os.system(r'ffmpeg -r 30 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
-
-    if args.chop_person or args.warp_face:
-        print('saving image part')
-        count = 1
-        for id, fimage in images.items():
-            image_np = image_utils.read_image_to_np(fimage['image_path'])
-            for cat, v1 in fimage['detections'].items():
-                for pid, v2 in v1.items():
-                    if args.chop_person:
-                        image_name = '{}_person_{}.jpg'.format(id, pid)
-                        image_chop = image_utils.read_image_from_np_with_box(v2['bbox'], image_np)
-                        image_utils.save_image_from_np(os.path.join(args.output_dir, image_name), image_utils.resize_image_from_np(image_chop, 128, 64))
-                    if args.warp_face and cat == 'face':
-                        image_name = '{}_face_{}.jpg'.format(id, pid)
-                        image_chop = image_utils.read_image_from_np_with_box(v2['bbox'], image_np)
-                        image_utils.save_image_from_np(os.path.join(args.output_dir, image_name), image_utils.resize_image_from_np(image_chop, 112, 96))
-            if count % 100 == 0:
-                print('{} images finished'.format(count))
-            count += 1
+    if args.video:
+        os.system(r'ffmpeg -r 30 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
 
 
 def main():
     args = parse_args()
-    if args.start:
-        start = args.start
-    else:
-        start = 0
+    if not args.yaml_dir:
+        print('yaml_dir not defined!')
+        exit(1)
 
-    if start == 0:
+    if args.video:
         images = prepare_images(args)
     else:
         images = load_yaml(args.yaml_dir)
 
-
-        save_yaml(images, args.yaml_dir)
-
-    if start <= 1:
+    if  args.person_dir:
         detection_graph = object_detection.prepare_model()
         images = object_detection.detect(images, detection_graph)
+        save_person(images, args.person_dir)
 
-    if start <= 2:
+    if args.face_dir:
         # pnet, rnet, onet = face_detection.prepare_model()
         # images = face_detection.detect(images, pnet, rnet, onet)
         pass
 
-    if start <= 3:
-        person_reid.embed(images)
-        save_person(images, args.person_dir)
-
+    person_reid.embed(images)
     save_yaml(images, args.yaml_dir)
 
 

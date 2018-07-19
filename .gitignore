@@ -97,7 +97,7 @@ ENV/
 
 # models
 models/object_detection/*
-models/person_reid/market1501_weights/*
+models/person_reid/market1501_weights*
 
 # data
 data/*
