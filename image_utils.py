@@ -414,78 +414,48 @@ def read_image_to_np(image_path):
 
 def visualize_box_and_label_on_image_array(
     fimage,
+    distance,
     use_normalized_coordinates=True,
     min_score_thresh=.5,
     line_thickness=2,
     skip_scores=True,
     skip_labels=True):
-  """Overlay labeled boxes on an image with formatted scores and label names.
 
-  This function groups boxes that correspond to the same location
-  and creates a display string for each detection and overlays these
-  on the image. Note that this function modifies the image in place, and returns
-  that same image.
+    image_np = read_image_to_np(fimage['image_path'])
 
-  Args:
-    image: uint8 numpy array with shape (img_height, img_width, 3)
-    boxes: a numpy array of shape [N, 4]
-    classes: a numpy array of shape [N]. Note that class indices are 1-based,
-      and match the keys in the label map.
-    scores: a numpy array of shape [N] or None.  If scores=None, then
-      this function assumes that the boxes to be plotted are groundtruth
-      boxes and plot all boxes as black with no classes or scores.
-    category_index: a dict containing category dictionaries (each holding
-      category index `id` and category name `name`) keyed by category indices.
-    use_normalized_coordinates: whether boxes is to be interpreted as
-      normalized coordinates or not.
-    min_score_thresh: minimum score threshold for a box to be visualized
-    line_thickness: integer (default: 4) controlling line width of the boxes.
-    groundtruth_box_visualization_color: box color for visualizing groundtruth
-      boxes
-    skip_scores: whether to skip score when drawing a single detection
-    skip_labels: whether to skip label when drawing a single detection
+    box_to_display_str_map = collections.defaultdict(list)
+    box_to_color_map = collections.defaultdict(str)
 
-  Returns:
-    uint8 numpy array with shape (img_height, img_width, 3) with overlaid boxes.
-  """
-  image_np = read_image_to_np(fimage['image_path'])
-
-  box_to_display_str_map = collections.defaultdict(list)
-  box_to_color_map = collections.defaultdict(str)
-
-  color_index = 0
-  for cat, v1 in fimage['detections'].items():
-    color_index += 1
-    for id, v2 in v1.items():
-      score = v2['score']
-      box = tuple(v2['bbox'])
-      if score > min_score_thresh:
-        display_str = ''
-        if not skip_labels:
-          display_str = cat
-        if not skip_scores:
-          if not display_str:
-            display_str = '{}%'.format(int(100*score))
-          else:
-            display_str = '{}: {}%'.format(display_str, int(100*score))
+    color_index = 0
+    for pid, v in fimage['detections']['person'].items():
+        if 'candidate' not in v: continue
+        if 'distance' not in v: continue
+        if v['distance'] > distance: continue
+        color_index += 1
+        score = v['score']
+        box = tuple(v['bbox'])
+        if score > min_score_thresh:
+            display_str = '{}: {} ({})'.format(v['candidate'], v['distance'], int(100*score))
+        else:
+            continue
         box_to_display_str_map[box].append(display_str)
         box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
 
   # Draw all boxes onto image.
-  for box, color in box_to_color_map.items():
-    ymin, xmin, ymax, xmax = box
-    draw_bounding_box_on_image_array(
-        image_np,
-        ymin,
-        xmin,
-        ymax,
-        xmax,
-        color=color,
-        thickness=line_thickness,
-        display_str_list=box_to_display_str_map[box],
-        use_normalized_coordinates=use_normalized_coordinates)
+    for box, color in box_to_color_map.items():
+        ymin, xmin, ymax, xmax = box
+        draw_bounding_box_on_image_array(
+            image_np,
+            ymin,
+            xmin,
+            ymax,
+            xmax,
+            color=color,
+            thickness=line_thickness,
+            display_str_list=box_to_display_str_map[box],
+            use_normalized_coordinates=use_normalized_coordinates)
 
-  return image_np
+    return image_np
 
 def save_image_from_video(save_path, video_path, max_frames):
     cv2.destroyAllWindows()
@@ -504,8 +474,8 @@ def save_image_from_video(save_path, video_path, max_frames):
     cv2.destroyAllWindows()
     print('')
 
-def save_image_from_fimage(save_path, fimage):
-    image_np = visualize_box_and_label_on_image_array(fimage)
+def save_image_from_fimage(save_path, fimage, distance):
+    image_np = visualize_box_and_label_on_image_array(fimage, distance)
     save_image_from_np(save_path, image_np)
 
 def save_image_from_np(save_path, image_np, reverse = True):

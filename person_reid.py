@@ -37,6 +37,7 @@ def fid_to_image(image_path):
     return image_resized
 
 def embed(image_dict):
+    prepare_model()
 
     ppaths = []
     for fid, fimage in image_dict.items():
@@ -64,7 +65,6 @@ def embed(image_dict):
     with tf.name_scope('head'):
         endpoints = head.head(endpoints, embedding_dim, is_training=False)
 
-    fids, pids, embeddings = [], [], []
     with tf.Session() as sess:
         checkpoint = 'models/person_reid/market1501_weights/checkpoint-25000'
         print('Restoring from checkpoint: {}'.format(checkpoint))
@@ -86,40 +86,51 @@ def embed(image_dict):
         print("Done with embedding, aggregating augmentations...", flush=True)
         print('')
         for i, emb in enumerate(emb_storage):
+            print('\rUpdating image dict for fid={}, pid={}'.format(fid, pid), flush=True, end='')
             ppath = ppaths[i]
             base_name = os.path.basename(ppath)
             m = re.search('(\d+)_person_(\d+)', base_name)
             fid = str(m.group(1)).zfill(6)
             pid = int(m.group(2))
-            print('\rUpdating image dict for fid={}, pid={}'.format(fid, pid), flush=True, end='')
-            fids.append(fid)
-            pids.append(pid)
-            embeddings.append(emb.tolist())
+            image_dict[fid]['detections']['person'][pid]['embedding'] = emb.tolist()
         print('')
 
-    return (fids, pids, embeddings)
+def get_distance(name_vectors):
+    distance = 0.0
+    for name1 in name_vectors.keys():
+        for name2 in name_vectors.keys():
+            if name1 == name2: continue
+            for vector1 in name_vectors[name1]:
+                for vector2 in name_vectors[name2]:
+                    cur_distance = np.linalg.norm(np.array(vector1) - np.array(vector2))
+                    if distance > 0.0:
+                        distance = min(cur_distance, distance)
+                    else:
+                        distance = cur_distance
+    return distance / 2
 
 
-def update_images(image_dict, fids, pids, embeddings, cluster_indices):
-    for i in range(len(fids)):
-        image_dict[fids[i]]['detections']['person'][pids[i]]['embedding'] = embeddings[i]
-        image_dict[fids[i]]['detections']['person'][pids[i]]['cluster_index'] = cluster_indices[i]
+def reid(image_dict, name_vectors, distance):
+    for fid in sorted(image_dict.keys()):
+        persons = image_dict[fid]['detections']['person']
+        if not persons: continue
+        for pid in sorted(persons.keys()):
+            if 'distance' in persons[pid]:
+                del persons[pid]['distance']
+                del persons[pid]['candidate']
 
-def cluster(emb_vectors, k):
-    input_fn=lambda: tf.train.limit_epochs(tf.convert_to_tensor(emb_vectors, dtype=tf.float32), num_epochs=1)
-    kmeans=tf.contrib.factorization.KMeansClustering(num_clusters=k)
-    kmeans.train(input_fn=input_fn)
-    centers = kmeans.cluster_centers()
+            emb = persons[pid]['embedding']
+            can_name = None
+            can_distance = 0.0
+            for name, vectors in name_vectors.items():
+                for vector in vectors:
+                    cur_distance = np.linalg.norm(np.array(emb) - np.array(vector))
+                    if not can_name:
+                        can_name = name
+                        can_distance = cur_distance
+                    elif can_distance > cur_distance:
+                        can_name = name
+                        can_distance = cur_distance
+            persons[pid]['distance'] = int(can_distance)
+            persons[pid]['candidate'] = can_name
 
-    # ---- Print out -----
-    cluster_indices = list(kmeans.predict_cluster_index(input_fn))
-    return cluster_indices
-
-def reid(image_dict, num_cluster):
-    prepare_model()
-    fids, pids, embeddings = embed(image_dict)
-    cluster_indices = cluster(embeddings, num_cluster)
-    update_images(image_dict, fids, pids, embeddings, cluster_indices)
-
-if __name__ == '__main__':
-    reid()

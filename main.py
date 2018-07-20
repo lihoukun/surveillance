@@ -6,6 +6,7 @@ import os
 import argparse
 import yaml
 import shutil
+import re
 
 import image_utils
 import object_detection
@@ -18,13 +19,13 @@ def parse_args():
     parser.add_argument('--image_path', help='input image path')
     parser.add_argument('--video', help='input local video file')
     parser.add_argument('--video_frames', help='max video frames to get', type=int)
-    parser.add_argument('--init_db', help='initialize unlabbbled data in sqlite', action='store_true')
     parser.add_argument('--frame_dir', help='per frame image dir for video')
     parser.add_argument('--person_dir', help='per person image dir for video')
     parser.add_argument('--face_dir', help='per face image dir for video')
-    parser.add_argument('--cluster_dir', help='person image moved into cluster')
-    parser.add_argument('--num_cluster', help='number of cluster for person reid', type=int)
     parser.add_argument('--yaml_dir', help='per image yaml dir')
+    parser.add_argument('--namelist', help='yaml file to map person name and image')
+    parser.add_argument('--distance', help='euclidean distance to treat as same person', type=float)
+    parser.add_argument('--video_out', help='output video with bbox', action='store_true')
 
     args = parser.parse_args()
     return args
@@ -90,38 +91,18 @@ def save_person(images, output_dir):
             v['image_path'] = person_path
     print('')
 
-def save_person_by_cluster(images, output_dir):
-
-    print('')
-    for fid in sorted(images.keys()):
-        fimage = images[fid]
-        persons = fimage['detections']['person']
-        if not persons: continue
-        for pid in sorted(persons.keys()):
-            v = persons[pid]
-            src_path = v['image_path']
-            dst_base = os.path.join(output_dir, str(v['cluster_index']))
-            if not os.path.isdir(dst_base):
-                os.makedirs(dst_base)
-            image_name = '{}_person_{}.jpg'.format(fid, pid)
-            dst_path = os.path.join(dst_base, image_name)
-            shutil.copyfile(src_path, dst_path)
-            print('\rCoping person image for pid={}, fid={}'.format(pid, fid), flush=True, end='')
-    print('')
-
-def no_use():
-    if args.vis_bbox:
-        print('saving image with bbox')
-        count  = 1
-        for id, fimage in images.items():
-            image_utils.save_image_from_fimage('{}/{}.jpg'.format(args.output_dir, id), fimage)
-            if count % 100 == 0:
-                print('{} images finished'.format(count))
-            count += 1
-
-    if args.video:
-        os.system(r'ffmpeg -r 30 -i output/%d.jpg -vcodec mpeg4 -y video.mp4')
-
+def load_name_vector(namelist, images):
+    name_vectors = {}
+    with open(namelist, 'r') as f:
+        name_dict = yaml.load(f)
+        for pname, fnames in name_dict.items():
+            name_vectors[pname] = []
+            for fname in fnames:
+                m = re.search('(\d+)_person_(\d+)', fname)
+                fid = str(m.group(1)).zfill(6)
+                pid = int(m.group(2))
+                name_vectors[pname].append(images[fid]['detections']['person'][pid]['embedding'])
+    return name_vectors
 
 def main():
     args = parse_args()
@@ -139,17 +120,36 @@ def main():
         images = object_detection.detect(images, detection_graph)
         save_person(images, args.person_dir)
         save_yaml(images, args.yaml_dir)
+        person_reid.embed(images)
 
     if args.face_dir:
         # pnet, rnet, onet = face_detection.prepare_model()
         # images = face_detection.detect(images, pnet, rnet, onet)
         pass
 
-    if args.num_cluster:
-        person_reid.reid(images, args.num_cluster)
-        if args.cluster_dir:
-            save_person_by_cluster(images, args.cluster_dir)
+    if args.namelist:
+        name_vectors = load_name_vector(args.namelist, images)
+        distance = person_reid.get_distance(name_vectors)
+        person_reid.reid(images, name_vectors, args.distance)
         save_yaml(images, args.yaml_dir)
+        
+    if args.video_out:
+        image_dir = 'data/output/frames'
+        if not os.path.isdir(image_dir):
+            os.makedirs(image_dir)
+        keys = sorted(images.keys())
+        if args.distance:
+            distance = args.distance
+        elif not distance:
+            distance = 12.0
+        print('distance set to {}'.format(distance))
+        print('')
+        for i in range(len(keys)):
+            fimage = images[keys[i]]
+            print('\rSaving frame {}'.format(i), flush=True, end='')
+            image_utils.save_image_from_fimage('{}/{}.jpg'.format(image_dir, i), fimage, distance)
+        print('')
+        os.system(r'ffmpeg -r 30 -i data/output/frames/%d.jpg -vcodec mpeg4 -y data/output/video.mp4')
 
 if __name__ == '__main__':
     main()
