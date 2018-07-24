@@ -457,21 +457,24 @@ def visualize_box_and_label_on_image_array(
 
     return image_np
 
-def save_image_from_video(save_path, video_path, max_frames):
+def read_image_from_video(video_path):
     cv2.destroyAllWindows()
+    cap = cv2.VideoCapture(video_path)
+     while (1):
+        ret, image = cap.read()
+        if ret:
+            yield image
+        else:
+            cv2.destroyAllWindows()
+            break
+
+def save_image_from_video(save_path, video_path):
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
-    cap = cv2.VideoCapture(video_path)
     print('')
-    count = 1
-    while (1):
-        ret, image = cap.read()
-        if not ret: break
+    for image in read_image_from_video(video_path):
         save_image_from_np('{}/{}.jpg'.format(save_path, str(count).zfill(6)), image, reverse = False)
         print('\rSaving frame {}'.format(count), flush=True, end='')
-        count += 1
-        if max_frames and count > max_frames: break
-    cv2.destroyAllWindows()
     print('')
 
 def save_image_from_fimage(save_path, fimage, distance):
