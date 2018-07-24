@@ -416,7 +416,7 @@ def visualize_box_and_label_on_image_array(
     fimage,
     distance,
     use_normalized_coordinates=True,
-    min_score_thresh=.5,
+    min_score_thresh=.9,
     line_thickness=2,
     skip_scores=True,
     skip_labels=True):
@@ -428,16 +428,16 @@ def visualize_box_and_label_on_image_array(
 
     color_index = 0
     for pid, v in fimage['detections']['person'].items():
-        if 'candidate' not in v: continue
-        if 'distance' not in v: continue
-        if v['distance'] > distance: continue
         color_index += 1
         score = v['score']
         box = tuple(v['bbox'])
-        if score > min_score_thresh:
-            display_str = '{}: {} ({})'.format(v['candidate'], v['distance'], int(100*score))
-        else:
-            continue
+
+        if score < 0.9: continue
+        if score < min_score_thresh: continue
+        display_str = 'pscore: {}'.format(int(100*score))
+
+        if 'candidate' in v and 'distance' in v and v['distance'] <= distance:
+            display_str += ', {}: {}'.format(v['candidate'], v['distance'])
         box_to_display_str_map[box].append(display_str)
         box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
 
