@@ -4,12 +4,9 @@ import os
 import sys
 import zipfile
 import re
-import math
 
 import numpy as np
 import tensorflow as tf
-
-import image_utils
 
 def prepare_model():
     base_dir = 'models/person_reid'

@@ -417,9 +417,7 @@ def visualize_box_and_label_on_image_array(
     use_normalized_coordinates=True,
     min_score_thresh=.3,
     min_rscore_thresh=30,
-    line_thickness=2,
-    skip_scores=True,
-    skip_labels=True):
+    line_thickness=2):
 
     image_np = read_image_to_np(fimage['image_path'])
 

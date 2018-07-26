@@ -5,7 +5,6 @@ from __future__ import print_function
 import os
 import argparse
 import yaml
-import re
 
 import image_utils
 import object_detection
