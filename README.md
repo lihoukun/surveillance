@@ -22,6 +22,6 @@ trace_dir
         - image1
 ```
 
-iii). `python3 main.py --name_dir path/to/trace_dir --dump_video`
+iii). `python3 main.py --name_dir path/to/trace_dir --dump_video --debug`
 - --name_dir: trace dir as is in step 2
 - --dump_video: save each frame with bounding box (shown person name), and combine all frames into a video
