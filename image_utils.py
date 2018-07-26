@@ -414,9 +414,9 @@ def read_image_to_np(image_path):
 
 def visualize_box_and_label_on_image_array(
     fimage,
-    distance,
     use_normalized_coordinates=True,
     min_score_thresh=.3,
+    min_rscore_thresh=30,
     line_thickness=2,
     skip_scores=True,
     skip_labels=True):
@@ -434,12 +434,12 @@ def visualize_box_and_label_on_image_array(
 
         if score < min_score_thresh: continue
 
-        display_str = 'pscore: {}'.format(int(100*score))
-        if 'candidate' in v and 'distance' in v and v['distance'] <= distance:
-            display_str += ', {}: {}'.format(v['candidate'], v['distance'])
-
-        box_to_display_str_map[box].append(display_str)
-        box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
+        if 'candidate' in v and 'color' in v and 'rscore' in v and v['rscore'] > min_rscore_thresh:
+            box_to_color_map[box] = v['color']
+            box_to_display_str_map[box].append('{}: {}%'.format(v['candidate'], v['rscore']))
+        else:
+            box_to_color_map[box] = '#ffffff'
+            box_to_display_str_map[box].append('Unknown')
 
     # Draw all boxes onto image.
     for box, color in box_to_color_map.items():
@@ -479,7 +479,7 @@ def save_image_from_video(save_path, video_path):
         count += 1
     print('')
 
-def save_video_from_image(output_dir, images, distance):
+def save_video_from_image(output_dir, images):
     image_dir = os.path.join(output_dir, 'frames')
     if not os.path.isdir(image_dir):
         os.makedirs(image_dir)
@@ -490,14 +490,14 @@ def save_video_from_image(output_dir, images, distance):
     for key in keys:
         fimage = images[key]
         print('\rSaving frame {}'.format(key), flush=True, end='')
-        image_np = save_image_from_fimage('{}/{}.jpg'.format(image_dir, key), fimage, distance)
+        image_np = save_image_from_fimage('{}/{}.jpg'.format(image_dir, key), fimage)
         video.write(cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
     print('')
     video.release()
     cv2.destroyAllWindows()    
 
-def save_image_from_fimage(save_path, fimage, distance):
-    image_np = visualize_box_and_label_on_image_array(fimage, distance)
+def save_image_from_fimage(save_path, fimage):
+    image_np = visualize_box_and_label_on_image_array(fimage)
     save_image_from_np(save_path, image_np)
     return image_np
 

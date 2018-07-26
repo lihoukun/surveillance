@@ -24,7 +24,6 @@ def parse_args():
     parser.add_argument('--face_dir', help='per face image dir for video', default='data/faces')
     parser.add_argument('--yaml_dir', help='per image yaml dir', default='data/yamls')
     parser.add_argument('--name_dir', help='path to trace images, with each subfolder as person name, and inside 256x128 image for that person')
-    parser.add_argument('--distance', help='euclidean distance to treat as same person', type=float)
     parser.add_argument('--dump_video', help='enable combined video dump', action='store_true')
     parser.add_argument('--output_dir', help='output dir', default='data/output')
 
@@ -88,25 +87,29 @@ def save_person(images, output_dir):
     return ppaths
 
 def embed_name_vector(name_dir):
+    colors = ['#ff0000', '#00ff00', '#0000ff', '#00aa55', '#5500aa', '#aa5500', '#0055aa', '#aa0055', '#55aa00']
+    name_vectors = {}
     names = []
     ppaths = []
-    for name in os.listdir(name_dir):
+
+    for i, name in enumerate(os.listdir(name_dir)):
         name_path = os.path.join(name_dir, name)
         if not os.path.isdir(name_path): continue
+        name_vectors[name] = {}
+        name_vectors[name]['vectors'] = []
+        name_vectors[name]['color'] = colors[i]
+
         for filename in os.listdir(name_path):
             image_path = os.path.join(name_path, filename)
             names.append(name)
             ppaths.append(image_path)
 
     vectors = person_reid.embed(ppaths)
-
-    name_vectors = {}
     for i in range(len(names)):
         name = names[i]
         vector = vectors[i]
-        if name not in name_vectors:
-            name_vectors[name] = []
-        name_vectors[name].append(vector)
+        name_vectors[name]['vectors'].append(vector)
+    
     return name_vectors
 
 def debug_mode(args):
@@ -133,16 +136,12 @@ def debug_mode(args):
     if args.name_dir:
         name_vectors = embed_name_vector(args.name_dir)
         distance = person_reid.get_distance(name_vectors)
-        person_reid.reid(images, name_vectors)
+        print('distance is {}'.format(distance))
+        person_reid.reid(images, name_vectors, distance)
         save_yaml(images, args.yaml_dir)
         
     if args.dump_video:
-        if args.distance:
-            distance = args.distance
-        else:
-            distance = 15.0
-        print('distance set to {}'.format(distance))
-        image_utils.save_video_from_image(args.output_dir, images, distance)
+        image_utils.save_video_from_image(args.output_dir, images)
 
 def display_mode(args):
     for image in image_utils.read_image_from_video(args.video):

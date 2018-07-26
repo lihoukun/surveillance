@@ -4,6 +4,7 @@ import os
 import sys
 import zipfile
 import re
+import math
 
 import numpy as np
 import tensorflow as tf
@@ -93,40 +94,51 @@ def update_images_with_emb(image_dict, ppaths, emb_storage):
 
 def get_distance(name_vectors):
     distance = 0.0
-    for name1 in name_vectors.keys():
-        for name2 in name_vectors.keys():
-            if name1 == name2: continue
-            for vector1 in name_vectors[name1]:
-                for vector2 in name_vectors[name2]:
-                    cur_distance = np.linalg.norm(np.array(vector1) - np.array(vector2))
-                    if distance > 0.0:
-                        distance = min(cur_distance, distance)
-                    else:
-                        distance = cur_distance
-    return distance / 2
+    mean_vectors = []
+    for k, v in name_vectors.items():
+        vectors = v['vectors']
+        mean_vectors.append(np.array(vectors).mean(axis=0))
+    for i in range(len(mean_vectors) - 1):
+        for j in range(i+1, len(mean_vectors)):
+            cur_distance = np.linalg.norm(mean_vectors[i] - mean_vectors[j])
+            if distance > 0.0:
+                distance = min(cur_distance, distance)
+            else:
+                distance = cur_distance
 
+    return distance / 1.42
 
-def reid(image_dict, name_vectors):
+def reid(image_dict, name_vectors, distance):
     for fid in sorted(image_dict.keys()):
         persons = image_dict[fid]['detections']['person']
         if not persons: continue
         for pid in sorted(persons.keys()):
-            if 'distance' in persons[pid]:
-                del persons[pid]['distance']
-                del persons[pid]['candidate']
+            if 'distance' in persons[pid]: del persons[pid]['distance']
+            if 'candidate' in persons[pid]: del persons[pid]['candidate']
+            if 'color' in persons[pid]: del persons[pid]['color']
+            if 'rscore' in persons[pid]: del persons[pid]['rscore']
 
             emb = persons[pid]['embedding']
             can_name = None
             can_distance = 0.0
-            for name, vectors in name_vectors.items():
-                for vector in vectors:
+            can_color = '#ffffff'
+            for name, v in name_vectors.items():
+                for vector in v['vectors']:
                     cur_distance = np.linalg.norm(np.array(emb) - np.array(vector))
-                    if not can_name:
+                    if not can_name or can_distance > cur_distance:
                         can_name = name
                         can_distance = cur_distance
-                    elif can_distance > cur_distance:
-                        can_name = name
-                        can_distance = cur_distance
+                        can_color = v['color']
             persons[pid]['distance'] = int(can_distance)
             persons[pid]['candidate'] = can_name
+            persons[pid]['color'] = can_color
+            dscore = 60
+            if can_distance <= distance:
+                persons[pid]['rscore'] = 100
+            elif can_distance <=  distance * 3:
+                a = dscore - 100
+                b = 100 - a
+                persons[pid]['rscore'] = int(a * can_distance / distance + b)
+            else:
+                persons[pid]['rscore'] = dscore
 
