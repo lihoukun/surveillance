@@ -36,15 +36,8 @@ def fid_to_image(image_path):
     image_resized = tf.image.resize_images(image_decoded, (256,128))
     return image_resized
 
-def embed(image_dict):
-    prepare_model()
-
-    ppaths = []
-    for fid, fimage in image_dict.items():
-        for pid, v in fimage['detections']['person'].items():
-            ppaths.append(v['image_path'])
+def embed(ppaths):
     ppaths = np.array(ppaths)
-
     dataset = tf.data.Dataset.from_tensor_slices(ppaths)
     dataset = dataset.map(
         lambda ppath: fid_to_image(ppath), 
@@ -55,7 +48,7 @@ def embed(image_dict):
     dataset = dataset.prefetch(1)
     images = dataset.make_one_shot_iterator().get_next()
 
-    # Create the model and an embedding head.
+    prepare_model()
     sys.path.append(os.path.abspath('models/person_reid'))
     model = import_module('nets.resnet_v1_50')
     head = import_module('heads.fc1024')
@@ -84,16 +77,19 @@ def embed(image_dict):
                 break  # This just indicates the end of the dataset.
 
         print("Done with embedding, aggregating augmentations...", flush=True)
-        print('')
-        for i, emb in enumerate(emb_storage):
-            print('\rUpdating image dict for fid={}, pid={}'.format(fid, pid), flush=True, end='')
-            ppath = ppaths[i]
-            base_name = os.path.basename(ppath)
-            m = re.search('(\d+)_person_(\d+)', base_name)
-            fid = str(m.group(1)).zfill(6)
-            pid = int(m.group(2))
-            image_dict[fid]['detections']['person'][pid]['embedding'] = emb.tolist()
-        print('')
+        return emb_storage.tolist()
+
+def update_images_with_emb(image_dict, ppaths, emb_storage):
+    print('')
+    for i, emb in enumerate(emb_storage):
+        ppath = ppaths[i]
+        base_name = os.path.basename(ppath)
+        m = re.search('(\d+)_person_(\d+)', base_name)
+        fid = str(m.group(1)).zfill(6)
+        pid = int(m.group(2))
+        image_dict[fid]['detections']['person'][pid]['embedding'] = emb
+        print('\rUpdating image dict for fid={}, pid={}'.format(fid, pid), flush=True, end='')
+    print('')
 
 def get_distance(name_vectors):
     distance = 0.0
@@ -110,7 +106,7 @@ def get_distance(name_vectors):
     return distance / 2
 
 
-def reid(image_dict, name_vectors, distance):
+def reid(image_dict, name_vectors):
     for fid in sorted(image_dict.keys()):
         persons = image_dict[fid]['detections']['person']
         if not persons: continue

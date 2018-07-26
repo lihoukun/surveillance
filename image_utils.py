@@ -416,7 +416,7 @@ def visualize_box_and_label_on_image_array(
     fimage,
     distance,
     use_normalized_coordinates=True,
-    min_score_thresh=.9,
+    min_score_thresh=.3,
     line_thickness=2,
     skip_scores=True,
     skip_labels=True):
@@ -432,16 +432,16 @@ def visualize_box_and_label_on_image_array(
         score = v['score']
         box = tuple(v['bbox'])
 
-        if score < 0.9: continue
         if score < min_score_thresh: continue
-        display_str = 'pscore: {}'.format(int(100*score))
 
+        display_str = 'pscore: {}'.format(int(100*score))
         if 'candidate' in v and 'distance' in v and v['distance'] <= distance:
             display_str += ', {}: {}'.format(v['candidate'], v['distance'])
+
         box_to_display_str_map[box].append(display_str)
         box_to_color_map[box] = STANDARD_COLORS[color_index % len(STANDARD_COLORS)]
 
-  # Draw all boxes onto image.
+    # Draw all boxes onto image.
     for box, color in box_to_color_map.items():
         ymin, xmin, ymax, xmax = box
         draw_bounding_box_on_image_array(
@@ -460,7 +460,7 @@ def visualize_box_and_label_on_image_array(
 def read_image_from_video(video_path):
     cv2.destroyAllWindows()
     cap = cv2.VideoCapture(video_path)
-     while (1):
+    while (1):
         ret, image = cap.read()
         if ret:
             yield image
@@ -472,14 +472,34 @@ def save_image_from_video(save_path, video_path):
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
     print('')
+    count  = 1
     for image in read_image_from_video(video_path):
         save_image_from_np('{}/{}.jpg'.format(save_path, str(count).zfill(6)), image, reverse = False)
         print('\rSaving frame {}'.format(count), flush=True, end='')
+        count += 1
     print('')
+
+def save_video_from_image(output_dir, images, distance):
+    image_dir = os.path.join(output_dir, 'frames')
+    if not os.path.isdir(image_dir):
+        os.makedirs(image_dir)
+
+    video = cv2.VideoWriter(os.path.join(output_dir, 'video.avi'), cv2.VideoWriter_fourcc(*'XVID'), 30, (1920, 1080), True)
+    keys = sorted(images.keys())
+    print('')
+    for key in keys:
+        fimage = images[key]
+        print('\rSaving frame {}'.format(key), flush=True, end='')
+        image_np = save_image_from_fimage('{}/{}.jpg'.format(image_dir, key), fimage, distance)
+        video.write(cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+    print('')
+    video.release()
+    cv2.destroyAllWindows()    
 
 def save_image_from_fimage(save_path, fimage, distance):
     image_np = visualize_box_and_label_on_image_array(fimage, distance)
     save_image_from_np(save_path, image_np)
+    return image_np
 
 def save_image_from_np(save_path, image_np, reverse = True):
     if reverse:
