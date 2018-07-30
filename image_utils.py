@@ -166,7 +166,7 @@ def draw_bounding_box_on_image(image,
   draw.line([(left, top), (left, bottom), (right, bottom),
              (right, top), (left, top)], width=thickness, fill=color)
   try:
-    font = ImageFont.truetype('arial.ttf', 24)
+    font = ImageFont.truetype('arial.ttf', size=24)
   except IOError:
     font = ImageFont.load_default()
 
@@ -416,7 +416,7 @@ def visualize_box_and_label_on_image_array(
     fimage,
     use_normalized_coordinates=True,
     min_score_thresh=.3,
-    min_rscore_thresh=30,
+    min_rscore_thresh=50,
     line_thickness=2):
 
     image_np = read_image_to_np(fimage['image_path'])
