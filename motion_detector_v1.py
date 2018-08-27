@@ -38,9 +38,9 @@ while True:
 
 	# resize the frame, convert it to grayscale, and blur it
 #	frame = imutils.resize(frame, width=500)
-  gray = cv.Smooth(frame)
+#	gray = cv2.Smooth(frame)
 #	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-#	gray = cv2.GaussianBlur(gray, (21, 21), 0)
+	gray = cv2.GaussianBlur(frame, (21, 21), 0)
 
 	# if the first frame is None, initialize it
 	if firstFrame is None:
@@ -52,12 +52,12 @@ while True:
 	# compute the absolute difference between the current frame and
 	# first frame
 	frameDelta = cv2.absdiff(firstFrame, gray)
-	frameDelta = cv.CvtColor(frameDelta, cv.CV_RGB2GRAY)
-	thresh = cv2.threshold(frameDelta, 50, 255, cv2.THRESH_BINARY)[1]
+	frameDelta = cv2.cvtColor(frameDelta, cv2.COLOR_BGR2GRAY)
+	thresh = cv2.threshold(frameDelta, 10, 255, cv2.THRESH_BINARY)[1]
 
 	# dilate the thresholded image to fill in holes, then find contours
 	# on thresholded image
-	thresh = cv2.dilate(thresh, None, iterations=12)
+	thresh = cv2.dilate(thresh, None, iterations=10)
 	cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL,
 		cv2.CHAIN_APPROX_SIMPLE)
 #	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
@@ -71,7 +71,7 @@ while True:
 		# compute the bounding box for the contour, draw it on the frame,
 		# and update the text
 		(x, y, w, h) = cv2.boundingRect(c)
-		if y < 300:
+		if y < 330 or max(w,h)<30:
 		  continue
 		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 		coordinate = "({},{})".format(w,h)
