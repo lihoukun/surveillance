@@ -12,6 +12,7 @@ def prepare_model():
     if not os.path.isdir(base_dir):
         os.makedirs(base_dir)
     model_name = 'ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03'
+    model_name = 'faster_rcnn_nas_coco_2018_01_28'
     pb_path = os.path.join(base_dir, model_name, 'frozen_inference_graph.pb')
     link = 'http://download.tensorflow.org/models/object_detection/{}.tar.gz'.format(model_name)
     tar_name = os.path.basename(link)

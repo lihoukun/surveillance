@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument('--dump_face', help='enable per face image dump', action='store_true')
     parser.add_argument('--face_dir', help='per face image dir for video', default='data/faces')
     parser.add_argument('--yaml_dir', help='per image yaml dir', default='data/yamls')
+    parser.add_argument('--discard_yml', help='yml file to store bbox to be discarded')
     parser.add_argument('--name_dir', help='path to trace images, with each subfolder as person name, and inside 256x128 image for that person')
     parser.add_argument('--dump_video', help='enable combined video dump', action='store_true')
     parser.add_argument('--output_dir', help='output dir', default='data/output')
@@ -111,6 +112,62 @@ def embed_name_vector(name_dir):
     
     return name_vectors
 
+def get_iou(bb1, bb2, method='square'):
+    print(bb1)
+    print(bb2)
+    print('a')
+    iou = 0.0
+    if ',' in method:
+        for meth in method.split(','):
+            iou = max(iou, get_iou(bb1, bb2, method=meth))
+        return iou
+
+    ymin = max(bb1[0], bb2[0])
+    xmin = max(bb1[1], bb2[1])
+    ymax = min(bb1[2], bb2[2])
+    xmax = min(bb1[3], bb2[3])
+
+    if method == 'row':
+        if xmax < xmin:
+            return iou
+        bb1_len = bb1[3] - bb1[1]
+        bb2_len = bb2[3] - bb2[1]
+        iou = (xmax-xmin) / float(bb1_len + bb2_len - (xmax-xmin))
+    elif method == 'col':
+        if ymax < ymin:
+            return iou
+        bb1_len = bb1[2] - bb1[0]
+        bb2_len = bb2[2] - bb2[0]
+        iou = (ymax-ymin) / float(bb1_len + bb2_len - (ymax-ymin))
+    elif method == 'square':
+        if xmax < xmin or ymax < ymin:
+            return iou
+        intersection_area = (xmax - xmin) * (ymax - ymin)
+        bb1_area = (bb1[2] - bb1[0]) * (bb1[3] - bb1[1])
+        bb2_area = (bb2[2] - bb2[0]) * (bb2[3] - bb2[1])
+        iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
+        return iou    
+    else:
+        return iou
+
+def discard_bbox(images, discard_yml):
+    with open(discard_yml, 'r') as f:
+        discard_bboxes = yaml.load(f)
+
+    for fid in sorted(images.keys()):
+        print('\rUpdating score for person fid {}'.format(fid), flush=True, end='')
+        fimage = images[fid]
+        persons = fimage['detections']['person']
+        if not persons: continue
+        for pid in sorted(persons.keys()):
+            bbox = persons[pid]['bbox']
+            score = persons[pid]['score']
+            for k, v in discard_bboxes.items():
+                iou = get_iou(bbox, v, method='col,row,square')
+                score = min(score, 1.0 - iou)
+            persons[pid]['score'] = score
+    print('')
+ 
 def debug_mode(args):
 
     if args.video:
@@ -131,6 +188,10 @@ def debug_mode(args):
         # pnet, rnet, onet = face_detection.prepare_model()
         # images = face_detection.detect(images, pnet, rnet, onet)
         pass
+
+    if args.discard_yml:
+        discard_bbox(images, args.discard_yml)
+        save_yaml(images, args.yaml_dir)
 
     if args.name_dir:
         name_vectors = embed_name_vector(args.name_dir)

@@ -482,7 +482,8 @@ def save_video_from_image(output_dir, images):
     if not os.path.isdir(image_dir):
         os.makedirs(image_dir)
 
-    video = cv2.VideoWriter(os.path.join(output_dir, 'video.avi'), cv2.VideoWriter_fourcc(*'XVID'), 30, (1920, 1080), True)
+    #video = cv2.VideoWriter(os.path.join(output_dir, 'video.avi'), cv2.VideoWriter_fourcc(*'XVID'), 30, (1920, 1080), True)
+    video = cv2.VideoWriter(os.path.join(output_dir, 'video.avi'), cv2.VideoWriter_fourcc(*'XVID'), 25, (1280, 720), True)
     keys = sorted(images.keys())
     print('')
     for key in keys:
