@@ -113,9 +113,6 @@ def embed_name_vector(name_dir):
     return name_vectors
 
 def get_iou(bb1, bb2, method='square'):
-    print(bb1)
-    print(bb2)
-    print('a')
     iou = 0.0
     if ',' in method:
         for meth in method.split(','):
@@ -146,9 +143,7 @@ def get_iou(bb1, bb2, method='square'):
         bb1_area = (bb1[2] - bb1[0]) * (bb1[3] - bb1[1])
         bb2_area = (bb2[2] - bb2[0]) * (bb2[3] - bb2[1])
         iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
-        return iou    
-    else:
-        return iou
+    return iou
 
 def discard_bbox(images, discard_yml):
     with open(discard_yml, 'r') as f:
