@@ -7,7 +7,7 @@ import cv2
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video", help="path to the video file")
-ap.add_argument("-a", "--min-area", type=int, default=50, help="minimum area size")
+ap.add_argument("-a", "--min-area", type=int, default=40, help="minimum area size")
 args = vars(ap.parse_args())
 
 # if the video argument is None, then we are reading from webcam
@@ -56,6 +56,7 @@ while True:
 	# dilate the thresholded image to fill in holes, then find contours
 	# on thresholded image
 	thresh = cv2.dilate(thresh, None, iterations=12)
+#	thresh = cv2.erode(thresh, None, iterations=1)
 	cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL,
 		cv2.CHAIN_APPROX_SIMPLE)
 #	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
@@ -69,7 +70,7 @@ while True:
 		# compute the bounding box for the contour, draw it on the frame,
 		# and update the text
 		(x, y, w, h) = cv2.boundingRect(c)
-		if y < 300:
+		if y < 330 or max(w,h)<33:
 		  continue
 		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 		coordinate = "({},{})".format(w,h)
