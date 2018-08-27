@@ -1,8 +1,6 @@
 # import the necessary packages
-from imutils.video import VideoStream
 import argparse
 import datetime
-import imutils
 import time
 import cv2
 
@@ -14,7 +12,7 @@ args = vars(ap.parse_args())
 
 # if the video argument is None, then we are reading from webcam
 if args.get("video", None) is None:
-	vs = VideoStream(src=0).start()
+	vs = cv2.VideoCapture(0)
 	time.sleep(2.0)
 
 # otherwise, we are reading from a video file
@@ -38,7 +36,7 @@ while True:
 		break
 
 	# resize the frame, convert it to grayscale, and blur it
-	frame = imutils.resize(frame, width=500)
+#	frame = imutils.resize(frame, width=500)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
@@ -55,12 +53,12 @@ while True:
 	# dilate the thresholded image to fill in holes, then find contours
 	# on thresholded image
 	thresh = cv2.dilate(thresh, None, iterations=2)
-	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+	cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL,
 		cv2.CHAIN_APPROX_SIMPLE)
-	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+#	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
 
 	# loop over the contours
-	for c in cnts:
+	for c in cnts[1]:
 		# if the contour is too small, ignore it
 		if cv2.contourArea(c) < args["min_area"]:
 			continue
