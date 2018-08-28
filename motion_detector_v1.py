@@ -37,16 +37,11 @@ while True:
 		break
 
 	# resize the frame, convert it to grayscale, and blur it
-#	frame = imutils.resize(frame, width=500)
-#	gray = cv2.Smooth(frame)
-#	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	frame = cv2.GaussianBlur(frame, (21, 21), 0)
 
 	# if the first frame is None, initialize it
 	if firstFrame is None:
 		firstFrame = frame
-#		orig[counter] = gray
-#		counter = (counter+1) % 25
 		continue
 		
 	# compute the absolute difference between the current frame and
