@@ -4,6 +4,7 @@ import six.moves.urllib as urllib
 import tensorflow as tf
 import numpy as np
 import datetime
+import cv2
 
 import image_utils
 
@@ -12,7 +13,7 @@ def prepare_model():
     if not os.path.isdir(base_dir):
         os.makedirs(base_dir)
     model_name = 'ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03'
-    model_name = 'faster_rcnn_nas_coco_2018_01_28'
+    #model_name = 'faster_rcnn_nas_coco_2018_01_28'
     pb_path = os.path.join(base_dir, model_name, 'frozen_inference_graph.pb')
     link = 'http://download.tensorflow.org/models/object_detection/{}.tar.gz'.format(model_name)
     tar_name = os.path.basename(link)
@@ -66,8 +67,8 @@ def detect(images, graph):
         image_count = 0
         object_count = 0
         print('')
-        firstFrame = None
-        for fimage in images.items():
+        first_frame = None
+        for fid, fimage in images.items():
             image = cv2.imread(fimage['image_path'])
             
             # blur the image to smooth noise
@@ -78,39 +79,38 @@ def detect(images, graph):
                 continue
               
             # compute the absolute difference between the current frame and first frame
-            frameDelta = cv2.absdiff(firstFrame, frame)
-            frameDelta = cv2.cvtColor(frameDelta, cv2.COLOR_BGR2GRAY)
-            thresh = cv2.threshold(frameDelta, 10, 255, cv2.THRESH_BINARY)[1]
-          	# dilate the thresholded image to fill in holes, then find contours
-          	# on thresholded image
-          	thresh = cv2.dilate(thresh, None, iterations=10)
-          	cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
-            total_boxes = None
-            total_scores = None
-            total_classes = None
+            frame_delta = cv2.absdiff(first_frame, frame)
+            frame_delta = cv2.cvtColor(frame_delta, cv2.COLOR_BGR2GRAY)
+            thresh = cv2.threshold(frame_delta, 10, 255, cv2.THRESH_BINARY)[1]
+            # dilate the thresholded image to fill in holes, then find contours
+            # on thresholded image
+            thresh = cv2.dilate(thresh, None, iterations=10)
+            cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
+            total_boxes = []
+            total_scores = []
+            total_classes = []
             total_num = 0
             for cnt in cnts:
-              if cv2.contourArea(c) < 50: # filter small areas of size less then 50 pxl
-                  continue
-              # compute the bounding box for the contour, draw it on the frame,
-		          # and update the text
-		          (x, y, w, h) = cv2.boundingRect(cnt)
-		          # HARDCODE for demo
-		          if y < 330 or max(w,h)<30:
-		              continue              
-              image_crop = cv2.cvtColor(image[y:y+height, x:x+width], cv2.COLOR_BGR2RGB)
-              boxes, scores, classes, num = sess.run(
+                if cv2.contourArea(cnt) < 50: # filter small areas of size less then 50 pxl
+                    continue
+                # compute the bounding box for the contour, draw it on the frame,
+                # and update the text
+                (x, y, w, h) = cv2.boundingRect(cnt)
+                # HARDCODE for demo
+                if y < 330 or max(w,h)<30:
+                    continue              
+                image_crop = cv2.cvtColor(image[y:y+h, x:x+w], cv2.COLOR_BGR2RGB)
+                boxes, scores, classes, num = sess.run(
                       [detection_boxes, detection_scores, detection_classes, num_detections],
                       feed_dict={image_tensor: np.expand_dims(image_crop, 0)}
-              )
-              if int(num[0]) > 0:
-                  total_boxes.append(boxes)
-                  total_scores.append(scores)
-                  total_classes.append(classes)
-                  total_num += int(num[0])
+                )
+                if int(num[0]) > 0:
+                    total_boxes.extend(np.squeeze(boxes))
+                    total_scores.extend(np.squeeze(scores))
+                    total_classes.extend(np.squeeze(classes).astype(np.int32))
+                    total_num += int(num[0])
             
-            update_fimage_from_od(fimage, np.squeeze(total_boxes), np.squeeze(total_scores), 
-                    np.squeeze(total_classes).astype(np.int32), total_num)
+            update_fimage_from_od(fimage, total_boxes, total_scores, total_classes, total_num)
             image_count += 1
             if image_count % 100 == 0:
                 loop_end = datetime.datetime.now()
