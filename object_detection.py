@@ -112,7 +112,7 @@ def detect(images, graph):
                 )
 
                 if int(num[0]) > 0:
-                    total_boxes.extend(convert_box(np.squeeze(boxes)),x,y,w,h,image.shape[1],image.shape[0])
+                    total_boxes.extend(convert_box(np.squeeze(boxes),x,y,w,h,image.shape[1],image.shape[0]))
                     total_scores.extend(np.squeeze(scores))
                     total_classes.extend(np.squeeze(classes).astype(np.int32))
                     total_num += int(num[0])
