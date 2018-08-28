@@ -175,9 +175,10 @@ def debug_mode(args):
         images = object_detection.detect(images, detection_graph)
         ppaths = save_person(images, args.person_dir)
         save_yaml(images, args.yaml_dir)
-        emb = person_reid.embed(ppaths)
-        person_reid.update_images_with_emb(images, ppaths, emb)
-        save_yaml(images, args.yaml_dir)
+        if ppaths:
+            emb = person_reid.embed(ppaths)
+            person_reid.update_images_with_emb(images, ppaths, emb)
+            save_yaml(images, args.yaml_dir)
 
     if args.dump_face:
         # pnet, rnet, onet = face_detection.prepare_model()

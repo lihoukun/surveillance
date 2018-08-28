@@ -68,7 +68,7 @@ def detect(images, graph):
         object_count = 0
         print('')
         first_frame = None
-        for fid, fimage in images.items():
+        for fid, fimage in sorted(images.items()):
             image = cv2.imread(fimage['image_path'])
             
             # blur the image to smooth noise
@@ -76,7 +76,6 @@ def detect(images, graph):
             # if the first frame is None, initialize it
             if first_frame is None:
                 first_frame = frame
-                continue
               
             # compute the absolute difference between the current frame and first frame
             frame_delta = cv2.absdiff(first_frame, frame)
@@ -104,15 +103,19 @@ def detect(images, graph):
                       [detection_boxes, detection_scores, detection_classes, num_detections],
                       feed_dict={image_tensor: np.expand_dims(image_crop, 0)}
                 )
+
                 if int(num[0]) > 0:
                     total_boxes.extend(np.squeeze(boxes))
                     total_scores.extend(np.squeeze(scores))
                     total_classes.extend(np.squeeze(classes).astype(np.int32))
                     total_num += int(num[0])
+                    print(fid, cnt, image_crop.shape)
+                    print(x,y,w,h)
             
             update_fimage_from_od(fimage, total_boxes, total_scores, total_classes, total_num)
             image_count += 1
-            if image_count % 100 == 0:
+            if False:
+            #if image_count % 100 == 0:
                 loop_end = datetime.datetime.now()
                 print('\rProcessed to image {},  speed: {} image/second'.format(image_count, 
                         100 / (loop_end-loop_start).total_seconds()), flush=True, end='')
