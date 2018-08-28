@@ -52,6 +52,10 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
                                                                          'score': float(scores[i])}
     return fimage
 
+def convert_box(boxes, x, y, w, h, picw, pich):
+  for box in boxes:
+      ret = ( y/pich+box[0]*h/pich, x/picw+box[1]*w/picw,
+              y/pich+box[2]*h/pich, x/picw+box[3]*w/picw)
 
 def detect(images, graph):
     with graph.as_default():
@@ -105,7 +109,7 @@ def detect(images, graph):
                 )
 
                 if int(num[0]) > 0:
-                    total_boxes.extend(np.squeeze(boxes))
+                    total_boxes.extend(convert_box(np.squeeze(boxes)))
                     total_scores.extend(np.squeeze(scores))
                     total_classes.extend(np.squeeze(classes).astype(np.int32))
                     total_num += int(num[0])
