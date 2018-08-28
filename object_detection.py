@@ -53,9 +53,12 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
     return fimage
 
 def convert_box(boxes, x, y, w, h, picw, pich):
+  ret = []
   for box in boxes:
-      ret = ( y/pich+box[0]*h/pich, x/picw+box[1]*w/picw,
+      b = ( y/pich+box[0]*h/pich, x/picw+box[1]*w/picw,
               y/pich+box[2]*h/pich, x/picw+box[3]*w/picw)
+      ret.append(b)
+  return ret
 
 def detect(images, graph):
     with graph.as_default():
