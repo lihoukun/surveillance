@@ -40,18 +40,18 @@ while True:
 #	frame = imutils.resize(frame, width=500)
 #	gray = cv2.Smooth(frame)
 #	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-	gray = cv2.GaussianBlur(frame, (21, 21), 0)
+	frame = cv2.GaussianBlur(frame, (21, 21), 0)
 
 	# if the first frame is None, initialize it
 	if firstFrame is None:
-		firstFrame = gray
+		firstFrame = frame
 #		orig[counter] = gray
 #		counter = (counter+1) % 25
 		continue
 		
 	# compute the absolute difference between the current frame and
 	# first frame
-	frameDelta = cv2.absdiff(firstFrame, gray)
+	frameDelta = cv2.absdiff(firstFrame, frame)
 	frameDelta = cv2.cvtColor(frameDelta, cv2.COLOR_BGR2GRAY)
 	thresh = cv2.threshold(frameDelta, 10, 255, cv2.THRESH_BINARY)[1]
 
