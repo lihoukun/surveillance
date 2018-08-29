@@ -37,16 +37,16 @@ while True:
 		break
 
 	# resize the frame, convert it to grayscale, and blur it
-	frame = cv2.GaussianBlur(frame, (21, 21), 0)
+	blur = cv2.GaussianBlur(frame, (21, 21), 0)
 
 	# if the first frame is None, initialize it
 	if firstFrame is None:
-		firstFrame = frame
+		firstFrame = blur
 		continue
 		
 	# compute the absolute difference between the current frame and
 	# first frame
-	frameDelta = cv2.absdiff(firstFrame, frame)
+	frameDelta = cv2.absdiff(firstFrame, blur)
 	frameDelta = cv2.cvtColor(frameDelta, cv2.COLOR_BGR2GRAY)
 	thresh = cv2.threshold(frameDelta, 10, 255, cv2.THRESH_BINARY)[1]
 

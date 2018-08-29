@@ -48,15 +48,15 @@ def update_fimage_from_od(fimage, boxes, scores, classes, num):
     fimage['detections']['person'] = {}
     for i in range(num):
         if int(classes[i]) != 1: continue
-        fimage['detections']['person'][len(fimage['detections']['person']) + 1] = {'bbox': boxes[i].tolist(),
+        fimage['detections']['person'][len(fimage['detections']['person']) + 1] = {'bbox': boxes[i],
                                                                          'score': float(scores[i])}
     return fimage
 
 def convert_box(boxes, x, y, w, h, picw, pich):
   ret = []
   for box in boxes:
-      b = ( y/pich+box[0]*h/pich, x/picw+box[1]*w/picw,
-              y/pich+box[2]*h/pich, x/picw+box[3]*w/picw)
+      b = [ y/pich+box[0]*h/pich, x/picw+box[1]*w/picw,
+              y/pich+box[2]*h/pich, x/picw+box[3]*w/picw]
       ret.append(b)
   return ret
 
@@ -116,13 +116,10 @@ def detect(images, graph):
                     total_scores.extend(np.squeeze(scores))
                     total_classes.extend(np.squeeze(classes).astype(np.int32))
                     total_num += int(num[0])
-                    print(fid, cnt, image_crop.shape)
-                    print(x,y,w,h)
             
             update_fimage_from_od(fimage, total_boxes, total_scores, total_classes, total_num)
             image_count += 1
-            if False:
-            #if image_count % 100 == 0:
+            if image_count % 100 == 0:
                 loop_end = datetime.datetime.now()
                 print('\rProcessed to image {},  speed: {} image/second'.format(image_count, 
                         100 / (loop_end-loop_start).total_seconds()), flush=True, end='')
