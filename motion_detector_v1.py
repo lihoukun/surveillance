@@ -52,7 +52,7 @@ while True:
 
 	# dilate the thresholded image to fill in holes, then find contours
 	# on thresholded image
-	thresh = cv2.dilate(thresh, None, iterations=10)
+	thresh = cv2.dilate(thresh, None, iterations=2)
 	cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL,
 		cv2.CHAIN_APPROX_SIMPLE)
 #	cnts = cnts[0] if imutils.is_cv2() else cnts[1]

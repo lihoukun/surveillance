@@ -80,7 +80,13 @@ def save_person(images, output_dir):
             image_name = '{}_person_{}.jpg'.format(fid, pid)
             image_chop = image_utils.read_image_from_np_with_box(v['bbox'], image_np)
             person_path = os.path.join(output_dir, image_name)
-            image_utils.save_image_from_np(person_path, image_utils.resize_image_from_np(image_chop, 256, 128))
+            try:
+                image_utils.save_image_from_np(person_path, image_utils.resize_image_from_np(image_chop, 256, 128))
+            except:
+                print(fid, pid)
+                print(v['bbox'])
+                print(image_np.shape, image_chop.shape)
+                exit()
             v['image_path'] = person_path
             ppaths.append(person_path)
     print('')
@@ -173,6 +179,7 @@ def debug_mode(args):
     if  args.dump_person:
         detection_graph = object_detection.prepare_model()
         images = object_detection.detect(images, detection_graph)
+        save_yaml(images, args.yaml_dir)
         ppaths = save_person(images, args.person_dir)
         save_yaml(images, args.yaml_dir)
         if ppaths:
